@@ -30,31 +30,32 @@ This is the hdf5storage package, a Python package to read and write
 python data types to HDF5 (Heirarchal Data Format) files beyond just
 Numpy types.
 
-Version 0.2
+Version 1.0.0
 
 """
 
-__version__ = "0.2"
+__version__ = "1.0.0"
 
 import collections.abc
 import contextlib
 import copy
 import datetime
 import importlib
+import importlib.util
 import inspect
 import itertools
 import os
-import pkgutil
 import posixpath
 import sys
 import threading
 import types
 from collections.abc import Iterable, Iterator, Mapping, Sequence
+from pathlib import Path
 from typing import Any, Literal, Optional
 
 import h5py
 
-from . import Marshallers, pathesc, plugins, utilities
+from hdf5storage import marshallers, pathesc, plugins, utilities
 
 # Define types for the Options arguments and fields that only allow
 # certain values.
@@ -1001,7 +1002,7 @@ class MarshallerCollection:
     data type.
 
     User marshallers must inherit from
-    ``hdf5storage.Marshallers.TypeMarshaller`` and provide its
+    ``hdf5storage.marshallers.TypeMarshaller`` and provide its
     interface.
 
     The priority with which marshallers are chosen (builtin, plugin, or
@@ -1011,7 +1012,7 @@ class MarshallerCollection:
 
     .. versionchanged:: 0.2
        All marshallers must now inherit from
-       ``hdf5storage.Marshallers.TypeMarshaller``.
+       ``hdf5storage.marshallers.TypeMarshaller``.
 
     .. versionadded:: 0.2
        Marshallers can be loaded from third party plugins that declare
@@ -1041,7 +1042,7 @@ class MarshallerCollection:
         builtin, plugin, user.
     marshallers : marshaller or Iterable of marshallers, optional
         The user marshaller/s to add to the collection. Must inherit
-        from ``hdf5storage.Marshallers.TypeMarshaller``.
+        from ``hdf5storage.marshallers.TypeMarshaller``.
 
     Attributes
     ----------
@@ -1057,7 +1058,7 @@ class MarshallerCollection:
     See Also
     --------
     hdf5storage.Marshallers
-    hdf5storage.Marshallers.TypeMarshaller
+    hdf5storage.marshallers.TypeMarshaller
 
     """
 
@@ -1066,7 +1067,7 @@ class MarshallerCollection:
         load_plugins: bool = False,
         lazy_loading: bool = True,
         priority: Sequence[str] = ("builtin", "plugin", "user"),
-        marshallers: Marshallers.TypeMarshaller | Iterable[Marshallers.TypeMarshaller] = (),
+        mrshllrs: marshallers.TypeMarshaller | Iterable[marshallers.TypeMarshaller] = (),
     ) -> None:
         if not isinstance(load_plugins, bool):
             msg = "load_plugins must be bool."
@@ -1095,12 +1096,12 @@ class MarshallerCollection:
 
         # Grab all the marshallers in the Marshallers module (they are
         # the classes that inherit from TypeMarshaller) by inspection.
-        self._builtin_marshallers: list[Marshallers.TypeMarshaller] = [
+        self._builtin_marshallers: list[marshallers.TypeMarshaller] = [
             m()
             for key, m in dict(
                 inspect.getmembers(
-                    Marshallers,
-                    lambda x: inspect.isclass(x) and Marshallers.TypeMarshaller in inspect.getmro(x),
+                    marshallers,
+                    lambda x: inspect.isclass(x) and marshallers.TypeMarshaller in inspect.getmro(x),
                 ),
             ).items()
         ]
@@ -1110,7 +1111,7 @@ class MarshallerCollection:
         # entry points, call them to get the marshallers, and check that
         # they inherit from TypeMarshaller before adding them to the
         # list of marshallers.
-        self._plugin_marshallers: list[Marshallers.TypeMarshaller] = []
+        self._plugin_marshallers: list[marshallers.TypeMarshaller] = []
         if load_plugins:
             plgs = plugins.find_thirdparty_marshaller_plugins()
             for ver in plugins.supported_marshaller_api_versions():
@@ -1121,13 +1122,13 @@ class MarshallerCollection:
                         # marshallers.
                         if not callable(fun):
                             continue
-                        ms = [m for m in fun(__version__) if isinstance(m, Marshallers.TypeMarshaller)]
+                        ms = [m for m in fun(__version__) if isinstance(m, marshallers.TypeMarshaller)]
                         self._plugin_marshallers.extend(ms)
 
         # Start with an initially empty list of user marshallers. The
         # ones given as an argument will be added using the adding
         # function.
-        self._user_marshallers: list[Marshallers.TypeMarshaller] = []
+        self._user_marshallers: list[marshallers.TypeMarshaller] = []
 
         # A list of all the marshallers will be needed along with
         # dictionaries to lookup up the marshaller to use for given
@@ -1135,7 +1136,7 @@ class MarshallerCollection:
         # keys). Additional lists will be used to keep track of whether
         # the required parent modules for each marshaller are present or
         # not and whether the required modules are imported or not.
-        self._marshallers: list[Marshallers.TypeMarshaller] = []
+        self._marshallers: list[marshallers.TypeMarshaller] = []
         self._has_required_modules: list[bool] = []
         self._imported_required_modules: list[bool] = []
         self._types: dict[str | type[Any], int] = {}
@@ -1143,7 +1144,7 @@ class MarshallerCollection:
         self._matlab_classes: dict[str, int] = {}
 
         # Add any user given marshallers.
-        self.add_marshaller(marshallers)
+        self.add_marshaller(mrshllrs)
 
     @property
     def priority(self: "MarshallerCollection") -> tuple[str, str, str]:
@@ -1197,7 +1198,7 @@ class MarshallerCollection:
             # Check if the required modules are here.
             try:
                 for name in m.required_parent_modules:
-                    if name not in sys.modules and pkgutil.find_loader(name) is None:
+                    if name not in sys.modules and importlib.util.find_spec(name) is None:
                         msg = "module not present"
                         raise ImportError(msg)  # noqa: TRY301
             except ImportError:
@@ -1261,7 +1262,7 @@ class MarshallerCollection:
                     self._matlab_classes[matlab_class] = i
 
     @staticmethod
-    def _import_marshaller_modules(m: Marshallers.TypeMarshaller) -> bool:
+    def _import_marshaller_modules(m: marshallers.TypeMarshaller) -> bool:
         """Import the modules required by the marshaller.
 
         Parameters
@@ -1286,7 +1287,7 @@ class MarshallerCollection:
 
     def add_marshaller(
         self: "MarshallerCollection",
-        marshallers: Marshallers.TypeMarshaller | Iterable[Marshallers.TypeMarshaller],
+        mrshllrs: marshallers.TypeMarshaller | Iterable[marshallers.TypeMarshaller],
     ) -> None:
         """Add a marshaller/s to the user provided list.
 
@@ -1314,11 +1315,11 @@ class MarshallerCollection:
         hdf5storage.Marshallers.TypeMarshaller
 
         """
-        if not isinstance(marshallers, collections.abc.Iterable):
-            marshallers = [marshallers]
-        for m in marshallers:
-            if not isinstance(m, Marshallers.TypeMarshaller):
-                msg = "Each marshaller must inherit from hdf5storage.Marshallers.TypeMarshaller."
+        if not isinstance(mrshllrs, collections.abc.Iterable):
+            mrshllrs = [mrshllrs]
+        for m in mrshllrs:
+            if not isinstance(m, marshallers.TypeMarshaller):
+                msg = "Each marshaller must inherit from hdf5storage.marshallers.TypeMarshaller."
                 raise TypeError(
                     msg,
                 )
@@ -1328,7 +1329,7 @@ class MarshallerCollection:
 
     def remove_marshaller(
         self: "MarshallerCollection",
-        marshallers: Marshallers.TypeMarshaller | Iterable[Marshallers.TypeMarshaller],
+        mrshllrs: marshallers.TypeMarshaller | Iterable[marshallers.TypeMarshaller],
     ) -> None:
         """Remove a marshaller/s from the user provided list.
 
@@ -1341,9 +1342,9 @@ class MarshallerCollection:
             The user marshaller/s to from the user provided collection.
 
         """
-        if not isinstance(marshallers, collections.abc.Iterable):
-            marshallers = [marshallers]
-        for m in marshallers:
+        if not isinstance(mrshllrs, collections.abc.Iterable):
+            mrshllrs = [mrshllrs]
+        for m in mrshllrs:
             if m in self._user_marshallers:
                 self._user_marshallers.remove(m)
         self._update_marshallers()
@@ -1362,7 +1363,7 @@ class MarshallerCollection:
     def get_marshaller_for_type(
         self: "MarshallerCollection",
         tp: str | type[Any],
-    ) -> tuple[Marshallers.TypeMarshaller | None, bool]:
+    ) -> tuple[marshallers.TypeMarshaller | None, bool]:
         """Get the appropriate marshaller for a type.
 
         Retrieves the marshaller, if any, that can be used to read/write
@@ -1386,7 +1387,7 @@ class MarshallerCollection:
 
         See Also
         --------
-        hdf5storage.Marshallers.TypeMarshaller.types
+        hdf5storage.marshallers.TypeMarshaller.types
 
         """
         if not isinstance(tp, str):
@@ -1408,7 +1409,7 @@ class MarshallerCollection:
     def get_marshaller_for_type_string(
         self: "MarshallerCollection",
         type_string: str,
-    ) -> tuple[Marshallers.TypeMarshaller | None, bool]:
+    ) -> tuple[marshallers.TypeMarshaller | None, bool]:
         """Get the appropriate marshaller for a type string.
 
         Retrieves the marshaller, if any, that can be used to read/write
@@ -1431,7 +1432,7 @@ class MarshallerCollection:
 
         See Also
         --------
-        hdf5storage.Marshallers.TypeMarshaller.python_type_strings
+        hdf5storage.marshallers.TypeMarshaller.python_type_strings
 
         """
         if type_string in self._type_strings:
@@ -1450,7 +1451,7 @@ class MarshallerCollection:
     def get_marshaller_for_matlab_class(
         self: "MarshallerCollection",
         matlab_class: str,
-    ) -> tuple[Marshallers.TypeMarshaller | None, bool]:
+    ) -> tuple[marshallers.TypeMarshaller | None, bool]:
         """Get the appropriate marshaller for a MATLAB class string.
 
         Retrieves the marshaller, if any, that can be used to read/write
@@ -1473,7 +1474,7 @@ class MarshallerCollection:
 
         See Also
         --------
-        hdf5storage.Marshallers.TypeMarshaller.python_type_strings
+        hdf5storage.marshallers.TypeMarshaller.python_type_strings
 
         """
         if matlab_class in self._matlab_classes:
@@ -1601,7 +1602,7 @@ class File(collections.abc.MutableMapping):
 
     def __init__(  # noqa: C901, PLR0912
         self: "File",
-        filename: str = "data.h5",
+        filename: str | Path = "data.h5",
         writable: bool = False,
         truncate_existing: bool = False,
         truncate_invalid_matlab: bool = False,
@@ -1615,8 +1616,8 @@ class File(collections.abc.MutableMapping):
         self._file: h5py.File | None = None
         self._lock: threading.Lock = threading.Lock()
         # Check the types of the arguments.
-        if not isinstance(filename, str):
-            msg = "filename must be str."
+        if not isinstance(filename, str | Path):
+            msg = "filename must be str or Path."
             raise TypeError(msg)
         if not isinstance(writable, bool):
             msg = "writable must be bool."
@@ -2423,7 +2424,7 @@ def read(path: pathesc.Path = "/", **keywords: dict) -> object:
 
 
 def savemat(  # noqa: PLR0913
-    file_name: str,
+    file_name: str | Path,
     mdict: Mapping[pathesc.Path, Any],
     appendmat: bool = True,
     fmt: MatfileFormat = "7.3",
@@ -2536,6 +2537,8 @@ def savemat(  # noqa: PLR0913
             file_name = file_name + ".mat"
         elif isinstance(file_name, bytes) and not file_name.endswith(b".mat"):
             file_name = file_name + b".mat"
+        elif isinstance(file_name, Path) and file_name.suffix != ".mat":
+            file_name = file_name.parent / (file_name.stem + ".mat")
 
     # Make the options with matlab compatibility forced.
     options = Options(
@@ -2557,7 +2560,7 @@ def savemat(  # noqa: PLR0913
 
 
 def loadmat(  # noqa: C901, PLR0912, PLR0913
-    file_name: str,
+    file_name: str | Path,
     mdict: dict[Any, Any] | None = None,
     appendmat: bool = True,
     variable_names: Sequence[pathesc.Path] | None = None,
@@ -2663,6 +2666,8 @@ def loadmat(  # noqa: C901, PLR0912, PLR0913
                 filename = file_name + ".mat"
             elif isinstance(file_name, bytes) and not file_name.endswith(b".mat"):
                 filename = file_name + b".mat"
+            elif isinstance(file_name, Path) and file_name.suffix != ".mat":
+                filename = file_name.parent / (file_name.stem + ".mat")
             else:
                 filename = file_name
         else:

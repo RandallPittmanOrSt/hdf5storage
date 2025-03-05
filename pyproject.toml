@@ -1,6 +1,6 @@
 [project]
 name = "hdf5storage"
-version = "0.2"
+version = "1.0.0"
 description = "Utilities to read/write Python types to/from HDF5 files, including MATLAB v7.3 MAT files."
 readme = "README.rst"
 authors = [{ name = "Freja Nordsiek", email = "fnordsie@posteo.net" }]
@@ -19,24 +19,26 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 requires-python = ">=3.11"
-dependencies = ["numpy >= 1.26", "h5py >= 3.12"]
+dependencies = ["numpy >= 1.26", "h5py >= 3.9"]
+
+[project.optional-dependencies]
+tests = ["pytest >= 8.3", "ruff >= 0.9"]
+docs = ["sphinx >= 8.0", "sphinx_rtd_theme >= 3.0"]
+scipy = ["scipy >= 1.14.0"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3"
 sphinx = ">=8.0"
 sphinx_rtd_theme = ">=3.0"
 ruff = ">=0.9"
-
-[[tool.poetry.source]]
-name = "relativity"
-url = "https://artifactory.relspace.net/artifactory/api/pypi/pypi/simple/"
-priority = "primary"
+scipy = ">=1.14.0"
 
 
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-exclude = [ # Patterns are glob expressions
+exclude = [
+    "examples/*", # Patterns are glob expressions
 ]
 lint.select = ["ALL"]
 lint.ignore = [
@@ -59,7 +61,6 @@ lint.unfixable = [
     "PERF102", # Don't auto-convert .items() to .values()
 ]
 
-
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*.py" = [
     "ANN201", # Allow no return types in tests.
@@ -70,8 +71,51 @@ lint.unfixable = [
     "ANN001", # Allow no function argument type annotations
     "INP001", # Do not require __init__.py module
 ]
-"docs/**/__init__.py" = [
-    "D104", # Don't require docstrings in documentation.
+"doc/source/conf.py" = [
+    "D100",   # Don't require docstring in test modules
+    "INP001", # Do not require __init__.py module
+]
+"hdf5storage/marshallers.py" = [
+    "D101",    # Don't require docstrings in public classes
+    "D102",    # Don't require docstrings in public methods
+    "PLR0912", # Too many branches
+    "PLR0913", # Too many arguments to function
+    "PLR0915", # Too many statements
+    "C901",    # Too complex
+]
+"tests/asserts.py" = [
+    "PLR0912", # Too many branches
+    "PLR0915", # Too many statements
+    "C901",    # Too complex
+]
+"tests/make_randoms.py" = [
+    "S311", # PRNG not suitable for cryptographic purposes
+]
+"tests/test_empty_matrix_matlab_metadata.py" = [
+    "S311", # PRNG not suitable for cryptographic purposes
+]
+"tests/test_hdf5_filters.py" = [
+    "S311", # PRNG not suitable for cryptographic purposes
+]
+"tests/test_marshaller_collection_priority.py" = [
+    "SLF001", # Access private member
+    "S311",   # PRNG not suitable for cryptographic purposes
+]
+"tests/test_marshallers_requiring_modules.py" = [
+    "ARG002", # Unused method argument
+    "D101",   # Don't require docstrings in public classes
+    "D102",   # Don't require docstrings in public methods
+    "SLF001", # Access private member
+]
+"tests/test_matlab_compatibility.py" = [
+    "S603", # Check for untrusted input to subprocess.call
+    "S607", # Partial executable path
+]
+"tests/test_multi_io.py" = [
+    "S311", # PRNG not suitable for cryptographic purposes
+]
+"tests/test_path_escaping.py" = [
+    "S311", # PRNG not suitable for cryptographic purposes
 ]
 
 [tool.ruff.lint.pydocstyle]

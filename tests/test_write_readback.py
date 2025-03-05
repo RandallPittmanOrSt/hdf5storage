@@ -28,13 +28,13 @@ import collections
 import contextlib
 import datetime
 import itertools
-import os.path
 import pathlib
 import posixpath
 import random
 import string
 import tempfile
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -201,7 +201,7 @@ def write_readback(  # noqa: C901, PLR0913
     # from building up. Different options can be used for reading the
     # data back.
     with tempfile.TemporaryDirectory() as folder:
-        filename = os.path.join(folder, "data.h5")  # noqa: PTH118
+        filename = Path(folder) / "data.h5"
         hdf5storage.write(data, path=name_w, filename=filename, options=write_options)
         out = hdf5storage.read(path=name_r, filename=filename, options=read_options)
     if check:
@@ -677,7 +677,7 @@ def test_bool_true(fmt):
 
 
 @pytest.mark.parametrize("fmt", fmts)
-def test_bool_talse(fmt):
+def test_bool_false(fmt):
     data = False
     write_readback(fmt, data)
 
