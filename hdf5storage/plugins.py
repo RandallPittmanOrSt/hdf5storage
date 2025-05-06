@@ -26,12 +26,10 @@
 
 """Module for finding plugins and indicating supported API versions."""
 
-from typing import Dict, Tuple
-
-import pkg_resources
+import importlib.metadata
 
 
-def supported_marshaller_api_versions() -> Tuple[str]:
+def supported_marshaller_api_versions() -> tuple[str]:
     """Get the Marshaller API versions that are supported.
 
     Gets the different Marshaller API versions that this version of
@@ -52,10 +50,7 @@ def supported_marshaller_api_versions() -> Tuple[str]:
     return ("1.0",)
 
 
-def find_thirdparty_marshaller_plugins() -> Dict[
-    str,
-    Dict[str, pkg_resources.EntryPoint],
-]:
+def find_thirdparty_marshaller_plugins() -> dict[str, dict[str, importlib.metadata.EntryPoint]]:
     """Find, but don't load, all third party marshaller plugins.
 
     Third party marshaller plugins declare the entry point
@@ -81,10 +76,8 @@ def find_thirdparty_marshaller_plugins() -> Dict[
     supported_marshaller_api_versions
 
     """
-    all_plugins = tuple(
-        pkg_resources.iter_entry_points("hdf5storage.marshallers.plugins"),
-    )
+    entry_points = importlib.metadata.entry_points()
+    all_plugins = tuple(entry_points.select(group="hdf5storage.marshallers.plugins"))
     return {
-        ver: {p.module_name: p for p in all_plugins if p.name == ver}
-        for ver in supported_marshaller_api_versions()
+        ver: {p.module_name: p for p in all_plugins if p.name == ver} for ver in supported_marshaller_api_versions()
     }

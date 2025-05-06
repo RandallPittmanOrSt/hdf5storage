@@ -24,13 +24,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os.path
 import random
 import tempfile
+from pathlib import Path
 
 import h5py
 import make_randoms
-import numpy
+import numpy as np
 
 import hdf5storage
 
@@ -50,7 +50,7 @@ def test_write_empty():
             dtype = random.choice(make_randoms.dtypes)
         data = make_randoms.random_numpy(shape, dtype)
         with tempfile.TemporaryDirectory() as folder:
-            filename = os.path.join(folder, "data.h5")
+            filename = Path(folder) / "data.h5"
             # Write
             hdf5storage.write(
                 data,
@@ -63,7 +63,7 @@ def test_write_empty():
             with h5py.File(filename, mode="r") as f:
                 dset = f[name]
                 assert isinstance(dset, h5py.Dataset)
-                assert dset.dtype == numpy.dtype("uint64")
+                assert dset.dtype == np.dtype("uint64")
                 assert tuple(dset[:]) == shape
                 assert "MATLAB_empty" in dset.attrs
                 assert dset.attrs["MATLAB_empty"] == 1
@@ -76,21 +76,17 @@ def test_read_empty():
         shape[random.randrange(len(shape))] = 0
         shape = tuple(shape)
         dtype = random.choice(
-            [
-                prefix + "int" + suffix
-                for prefix in ("u", "")
-                for suffix in ("8", "16", "32", "64")
-            ]
+            [prefix + "int" + suffix for prefix in ("u", "") for suffix in ("8", "16", "32", "64")]
             + ["single", "double"],
         )
         with tempfile.TemporaryDirectory() as folder:
-            filename = os.path.join(folder, "data.h5")
+            filename = Path(folder) / "data.h5"
             # Make the file and the data.
             with h5py.File(filename, mode="w") as f:
-                dset = f.create_dataset(name, data=numpy.uint64(shape))
-                dset.attrs.create("MATLAB_class", numpy.bytes_(dtype))
-                dset.attrs.create("MATLAB_empty", numpy.uint8(1))
+                dset = f.create_dataset(name, data=np.uint64(shape))
+                dset.attrs.create("MATLAB_class", np.bytes_(dtype))
+                dset.attrs.create("MATLAB_empty", np.uint8(1))
             # Read the data.
             data = hdf5storage.read(path=name, filename=filename)
             assert data.shape == shape
-            assert data.dtype == numpy.dtype(dtype)
+            assert data.dtype == np.dtype(dtype)

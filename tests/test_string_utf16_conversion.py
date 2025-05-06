@@ -13,7 +13,6 @@
 # documentation and/or other materials provided with the distribution.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 # HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
@@ -24,8 +23,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os.path
 import tempfile
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -38,15 +37,15 @@ import hdf5storage
 # convert_numpy_str_to_utf16 option is set.
 #
 # * str
-# * numpy.unicode_ scalars
+# * numpy.str_ scalars
 
 
-@pytest.mark.parametrize("tp", [str, np.unicode_])
+@pytest.mark.parametrize("tp", [str, np.str_])
 def test_conv_utf16(tp):
     name = "/a"
     data = tp("abcdefghijklmnopqrstuvwxyz")
     with tempfile.TemporaryDirectory() as folder:
-        filename = os.path.join(folder, "data.h5")
+        filename = Path(folder) / "data.h5"
 
         hdf5storage.write(
             data,

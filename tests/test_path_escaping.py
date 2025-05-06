@@ -111,7 +111,7 @@ def test_unescaping_u():
         assert s == unescape_path(s_e)
 
 
-def test_unescaping_U():
+def test_unescaping_U():  # noqa: N802
     fmts = [b"{0:08x}".decode("ascii"), b"{0:08X}".decode("ascii")]
     prefix = b"\\U".decode("ascii")
     for _ in range(20):
@@ -235,10 +235,7 @@ def test_process_path_escapes():
 
 def test_process_path_escapes_bytes():
     for _ in range(10):
-        pth = [
-            make_str_for_esc(include_escapes=chars_to_escape).encode("utf-8")
-            for j in range(10)
-        ]
+        pth = [make_str_for_esc(include_escapes=chars_to_escape).encode("utf-8") for j in range(10)]
         beginning = tuple([escape_path(s) for s in pth[:-1]])
         gs = posixpath.join(*beginning)
         ts = escape_path(pth[-1])
@@ -260,10 +257,7 @@ def test_process_path_leading_periods():
 
 def test_process_path_leading_periods_bytes():
     for _ in range(10):
-        pth = [
-            make_str_for_esc(include_leading_periods=True).encode("utf-8")
-            for j in range(10)
-        ]
+        pth = [make_str_for_esc(include_leading_periods=True).encode("utf-8") for j in range(10)]
         beginning = tuple([escape_path(s) for s in pth[:-1]])
         gs = posixpath.join(*beginning)
         ts = escape_path(pth[-1])

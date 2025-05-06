@@ -30,50 +30,39 @@ This is the hdf5storage package, a Python package to read and write
 python data types to HDF5 (Heirarchal Data Format) files beyond just
 Numpy types.
 
-Version 0.2
+Version 1.0.0
 
 """
 
-__version__ = "0.2"
+__version__ = "1.0.0"
 
 import collections.abc
 import contextlib
 import copy
 import datetime
 import importlib
+import importlib.util
 import inspect
 import itertools
 import os
-import pkgutil
 import posixpath
 import sys
 import threading
 import types
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from pathlib import Path
+from typing import Any, Literal, Optional
 
 import h5py
 
-from . import Marshallers, pathesc, plugins, utilities
-
-if sys.version_info >= (3, 9):
-    from collections.abc import Iterable, Iterator, Mapping, Sequence
-else:
-    from typing import Iterable, Iterator, Mapping, Sequence
+from hdf5storage import marshallers, pathesc, plugins, utilities
 
 # Define types for the Options arguments and fields that only allow
 # certain values.
-if sys.version_info >= (3, 8):
-    from typing import Literal
-
-    ActionMatlabIncompatible = Literal["ignore", "discard", "error"]
-    OnedAs = Literal["row", "column"]
-    CompressionAlgorithm = Literal["gzip", "lzf", "szip"]
-    MatfileFormat = Literal["4", "5", "7.3"]
-else:
-    ActionMatlabIncompatible = str
-    OnedAs = str
-    CompressionAlgorithm = str
-    MatfileFormat = str
+ActionMatlabIncompatible = Literal["ignore", "discard", "error"]
+OnedAs = Literal["row", "column"]
+CompressionAlgorithm = Literal["gzip", "lzf", "szip"]
+MatfileFormat = Literal["4", "5", "7.3"]
 
 
 class Options:
@@ -157,7 +146,7 @@ class Options:
         See Attributes.
     marshaller_collection : MarshallerCollection, optional
         See Attributes.
-    **keywords :
+    **keywords : dict, optional
         Additional keyword arguments. They are ignored. They are allowed
         to be given to be more compatible with future versions of this
         package where more options will be added.
@@ -192,7 +181,7 @@ class Options:
 
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0915
         self: "Options",
         store_python_metadata: bool = True,
         matlab_compatible: bool = True,
@@ -206,7 +195,7 @@ class Options:
         reverse_dimension_order: bool = False,
         structs_as_dicts: bool = False,
         store_shape_for_empty: bool = False,
-        complex_names: Tuple[str, str] = ("r", "i"),
+        complex_names: tuple[str, str] = ("r", "i"),
         group_for_references: str = "/#refs#",
         oned_as: OnedAs = "row",
         dict_like_keys_name: str = "keys",
@@ -219,7 +208,7 @@ class Options:
         compressed_fletcher32_filter: bool = True,
         uncompressed_fletcher32_filter: bool = False,
         marshaller_collection: Optional["MarshallerCollection"] = None,
-        **keywords: Any,
+        **keywords: dict,  # noqa: ARG002
     ) -> None:
         # Set the defaults.
 
@@ -234,7 +223,7 @@ class Options:
         self._reverse_dimension_order: bool = False
         self._structs_as_dicts: bool = False
         self._store_shape_for_empty: bool = False
-        self._complex_names: Tuple[str, str] = ("r", "i")
+        self._complex_names: tuple[str, str] = ("r", "i")
         self._group_for_references: str = "/#refs#"
         self._oned_as: OnedAs = "row"
         self._dict_like_keys_name: str = "keys"
@@ -279,7 +268,7 @@ class Options:
 
         # Use the given marshaller collection if it was
         # given. Otherwise, use the default.
-        self._marshaller_collection: "MarshallerCollection"
+        self._marshaller_collection: MarshallerCollection
         if isinstance(marshaller_collection, MarshallerCollection):
             self._marshaller_collection = marshaller_collection
         else:
@@ -531,17 +520,17 @@ class Options:
 
     @property
     def convert_numpy_str_to_utf16(self: "Options") -> bool:
-        """Whether or not to convert ``numpy.unicode_`` to UTF-16.
+        """Whether or not to convert ``numpy.str_`` to UTF-16.
 
         bool
 
         If ``True`` (defaults to ``False`` unless MATLAB compatibility
-        is being done), ``numpy.unicode_`` and anything that is
+        is being done), ``numpy.str_`` and anything that is
         converted to them (``str``) will be converted to UTF-16 if
         possible before being written to file as ``numpy.uint16``. If
         doing so would lead to a loss of data (character can't be
         translated to UTF-16) or would change the shape of an array of
-        ``numpy.unicode_`` due to a character being converted into a
+        ``numpy.str_`` due to a character being converted into a
         pair of 2-bytes, the conversion will not be made and the string
         will be stored in UTF-32 form as a ``numpy.uint32``.
 
@@ -667,7 +656,7 @@ class Options:
             self._matlab_compatible = False
 
     @property
-    def complex_names(self: "Options") -> Tuple[str, str]:
+    def complex_names(self: "Options") -> tuple[str, str]:
         """Names to use for the real and imaginary fields.
 
         tuple of two str
@@ -684,16 +673,11 @@ class Options:
         return self._complex_names
 
     @complex_names.setter
-    def complex_names(self: "Options", value: Tuple[str, str]) -> None:
+    def complex_names(self: "Options", value: tuple[str, str]) -> None:
         # Check that it is a tuple of two strings, and then set it. If
         # it is something other than ('real', 'imag'), then we are not
         # doing MATLAB compatible formatting.
-        if (
-            isinstance(value, tuple)
-            and len(value) == 2
-            and isinstance(value[0], str)
-            and isinstance(value[1], str)
-        ):
+        if isinstance(value, tuple) and len(value) == 2 and isinstance(value[0], str) and isinstance(value[1], str):
             self._complex_names = value
         if self._complex_names != ("real", "imag"):
             self._matlab_compatible = False
@@ -1018,7 +1002,7 @@ class MarshallerCollection:
     data type.
 
     User marshallers must inherit from
-    ``hdf5storage.Marshallers.TypeMarshaller`` and provide its
+    ``hdf5storage.marshallers.TypeMarshaller`` and provide its
     interface.
 
     The priority with which marshallers are chosen (builtin, plugin, or
@@ -1028,7 +1012,7 @@ class MarshallerCollection:
 
     .. versionchanged:: 0.2
        All marshallers must now inherit from
-       ``hdf5storage.Marshallers.TypeMarshaller``.
+       ``hdf5storage.marshallers.TypeMarshaller``.
 
     .. versionadded:: 0.2
        Marshallers can be loaded from third party plugins that declare
@@ -1058,7 +1042,7 @@ class MarshallerCollection:
         builtin, plugin, user.
     marshallers : marshaller or Iterable of marshallers, optional
         The user marshaller/s to add to the collection. Must inherit
-        from ``hdf5storage.Marshallers.TypeMarshaller``.
+        from ``hdf5storage.marshallers.TypeMarshaller``.
 
     Attributes
     ----------
@@ -1074,7 +1058,7 @@ class MarshallerCollection:
     See Also
     --------
     hdf5storage.Marshallers
-    hdf5storage.Marshallers.TypeMarshaller
+    hdf5storage.marshallers.TypeMarshaller
 
     """
 
@@ -1083,24 +1067,26 @@ class MarshallerCollection:
         load_plugins: bool = False,
         lazy_loading: bool = True,
         priority: Sequence[str] = ("builtin", "plugin", "user"),
-        marshallers: Union[
-            Marshallers.TypeMarshaller,
-            Iterable[Marshallers.TypeMarshaller],
-        ] = (),
+        mrshllrs: marshallers.TypeMarshaller | Iterable[marshallers.TypeMarshaller] = (),
     ) -> None:
         if not isinstance(load_plugins, bool):
-            raise TypeError("load_plugins must be bool.")
+            msg = "load_plugins must be bool."
+            raise TypeError(msg)
         if not isinstance(lazy_loading, bool):
-            raise TypeError("lazy_loading must be bool.")
+            msg = "lazy_loading must be bool."
+            raise TypeError(msg)
         if not isinstance(priority, collections.abc.Sequence):
-            raise TypeError("priority must be a Sequence.")
+            msg = "priority must be a Sequence."
+            raise TypeError(msg)
         if len(priority) != 3:
-            raise ValueError("priority must have exactly 3 elements.")
+            msg = "priority must have exactly 3 elements."
+            raise ValueError(msg)
         if sorted(priority) != sorted(("builtin", "plugin", "user")):
-            raise ValueError("priority has a missing or invalid element.")
+            msg = "priority has a missing or invalid element."
+            raise ValueError(msg)
         self._load_plugins: bool = load_plugins
         self._lazy_loading: bool = lazy_loading
-        self._priority: Tuple[str, str, str] = tuple(
+        self._priority: tuple[str, str, str] = tuple(
             priority,
         )  # type: ignore[assignment]
 
@@ -1110,13 +1096,12 @@ class MarshallerCollection:
 
         # Grab all the marshallers in the Marshallers module (they are
         # the classes that inherit from TypeMarshaller) by inspection.
-        self._builtin_marshallers: List[Marshallers.TypeMarshaller] = [
+        self._builtin_marshallers: list[marshallers.TypeMarshaller] = [
             m()
             for key, m in dict(
                 inspect.getmembers(
-                    Marshallers,
-                    lambda x: inspect.isclass(x)
-                    and Marshallers.TypeMarshaller in inspect.getmro(x),
+                    marshallers,
+                    lambda x: inspect.isclass(x) and marshallers.TypeMarshaller in inspect.getmro(x),
                 ),
             ).items()
         ]
@@ -1126,7 +1111,7 @@ class MarshallerCollection:
         # entry points, call them to get the marshallers, and check that
         # they inherit from TypeMarshaller before adding them to the
         # list of marshallers.
-        self._plugin_marshallers: List[Marshallers.TypeMarshaller] = []
+        self._plugin_marshallers: list[marshallers.TypeMarshaller] = []
         if load_plugins:
             plgs = plugins.find_thirdparty_marshaller_plugins()
             for ver in plugins.supported_marshaller_api_versions():
@@ -1137,17 +1122,13 @@ class MarshallerCollection:
                         # marshallers.
                         if not callable(fun):
                             continue
-                        ms = [
-                            m
-                            for m in fun(__version__)
-                            if isinstance(m, Marshallers.TypeMarshaller)
-                        ]
+                        ms = [m for m in fun(__version__) if isinstance(m, marshallers.TypeMarshaller)]
                         self._plugin_marshallers.extend(ms)
 
         # Start with an initially empty list of user marshallers. The
         # ones given as an argument will be added using the adding
         # function.
-        self._user_marshallers: List[Marshallers.TypeMarshaller] = []
+        self._user_marshallers: list[marshallers.TypeMarshaller] = []
 
         # A list of all the marshallers will be needed along with
         # dictionaries to lookup up the marshaller to use for given
@@ -1155,18 +1136,18 @@ class MarshallerCollection:
         # keys). Additional lists will be used to keep track of whether
         # the required parent modules for each marshaller are present or
         # not and whether the required modules are imported or not.
-        self._marshallers: List[Marshallers.TypeMarshaller] = []
-        self._has_required_modules: List[bool] = []
-        self._imported_required_modules: List[bool] = []
-        self._types: Dict[Union[str, Type[Any]], int] = {}
-        self._type_strings: Dict[str, int] = {}
-        self._matlab_classes: Dict[str, int] = {}
+        self._marshallers: list[marshallers.TypeMarshaller] = []
+        self._has_required_modules: list[bool] = []
+        self._imported_required_modules: list[bool] = []
+        self._types: dict[str | type[Any], int] = {}
+        self._type_strings: dict[str, int] = {}
+        self._matlab_classes: dict[str, int] = {}
 
         # Add any user given marshallers.
-        self.add_marshaller(marshallers)
+        self.add_marshaller(mrshllrs)
 
     @property
-    def priority(self: "MarshallerCollection") -> Tuple[str, str, str]:
+    def priority(self: "MarshallerCollection") -> tuple[str, str, str]:
         """The priority order when choosing the marshaller to use.
 
         tuple of str
@@ -1181,7 +1162,7 @@ class MarshallerCollection:
         """
         return self._priority
 
-    def _update_marshallers(self: "MarshallerCollection") -> None:
+    def _update_marshallers(self: "MarshallerCollection") -> None:  # noqa: C901, PLR0912
         """Update the full marshaller list and other data structures.
 
         Makes a full list of both builtin and user marshallers and
@@ -1204,7 +1185,8 @@ class MarshallerCollection:
             elif v == "user":
                 self._marshallers.extend(self._user_marshallers)
             else:
-                raise ValueError("priority attribute has an illegal element value.")
+                msg = "priority attribute has an illegal element value."
+                raise ValueError(msg)
 
         # Determine whether the required modules are present, do module
         # loading, and determine whether the required modules are
@@ -1216,8 +1198,9 @@ class MarshallerCollection:
             # Check if the required modules are here.
             try:
                 for name in m.required_parent_modules:
-                    if name not in sys.modules and pkgutil.find_loader(name) is None:
-                        raise ImportError("module not present")
+                    if name not in sys.modules and importlib.util.find_spec(name) is None:
+                        msg = "module not present"
+                        raise ImportError(msg)  # noqa: TRY301
             except ImportError:
                 self._has_required_modules[i] = False
             else:
@@ -1234,7 +1217,8 @@ class MarshallerCollection:
             try:
                 for name in m.required_modules:
                     if name not in sys.modules:
-                        raise ImportError("module not loaded yet.")
+                        msg = "module not loaded yet."
+                        raise ImportError(msg)  # noqa: TRY301
             except ImportError:
                 if self._lazy_loading:
                     self._imported_required_modules[i] = False
@@ -1264,10 +1248,7 @@ class MarshallerCollection:
         for i, m in enumerate(self._marshallers):
             # types.
             for tp in m.types:
-                if isinstance(tp, str):
-                    tp_as_str = tp
-                else:
-                    tp_as_str = tp.__module__ + "." + tp.__name__
+                tp_as_str = tp if isinstance(tp, str) else tp.__module__ + "." + tp.__name__
                 if tp_as_str not in types_as_str:
                     self._types[tp_as_str] = i
                     types_as_str.add(tp_as_str)
@@ -1281,8 +1262,8 @@ class MarshallerCollection:
                     self._matlab_classes[matlab_class] = i
 
     @staticmethod
-    def _import_marshaller_modules(m: Marshallers.TypeMarshaller) -> bool:
-        """Imports the modules required by the marshaller.
+    def _import_marshaller_modules(m: marshallers.TypeMarshaller) -> bool:
+        """Import the modules required by the marshaller.
 
         Parameters
         ----------
@@ -1306,10 +1287,7 @@ class MarshallerCollection:
 
     def add_marshaller(
         self: "MarshallerCollection",
-        marshallers: Union[
-            Marshallers.TypeMarshaller,
-            Iterable[Marshallers.TypeMarshaller],
-        ],
+        mrshllrs: marshallers.TypeMarshaller | Iterable[marshallers.TypeMarshaller],
     ) -> None:
         """Add a marshaller/s to the user provided list.
 
@@ -1337,13 +1315,13 @@ class MarshallerCollection:
         hdf5storage.Marshallers.TypeMarshaller
 
         """
-        if not isinstance(marshallers, collections.abc.Iterable):
-            marshallers = [marshallers]
-        for m in marshallers:
-            if not isinstance(m, Marshallers.TypeMarshaller):
+        if not isinstance(mrshllrs, collections.abc.Iterable):
+            mrshllrs = [mrshllrs]
+        for m in mrshllrs:
+            if not isinstance(m, marshallers.TypeMarshaller):
+                msg = "Each marshaller must inherit from hdf5storage.marshallers.TypeMarshaller."
                 raise TypeError(
-                    "Each marshaller must inherit from "
-                    "hdf5storage.Marshallers.TypeMarshaller.",
+                    msg,
                 )
             if m not in self._user_marshallers:
                 self._user_marshallers.append(m)
@@ -1351,12 +1329,9 @@ class MarshallerCollection:
 
     def remove_marshaller(
         self: "MarshallerCollection",
-        marshallers: Union[
-            Marshallers.TypeMarshaller,
-            Iterable[Marshallers.TypeMarshaller],
-        ],
+        mrshllrs: marshallers.TypeMarshaller | Iterable[marshallers.TypeMarshaller],
     ) -> None:
-        """Removes a marshaller/s from the user provided list.
+        """Remove a marshaller/s from the user provided list.
 
         Removes a marshaller or an Iterable of them from the user
         provided set of marshallers.
@@ -1367,15 +1342,15 @@ class MarshallerCollection:
             The user marshaller/s to from the user provided collection.
 
         """
-        if not isinstance(marshallers, collections.abc.Iterable):
-            marshallers = [marshallers]
-        for m in marshallers:
+        if not isinstance(mrshllrs, collections.abc.Iterable):
+            mrshllrs = [mrshllrs]
+        for m in mrshllrs:
             if m in self._user_marshallers:
                 self._user_marshallers.remove(m)
         self._update_marshallers()
 
     def clear_marshallers(self: "MarshallerCollection") -> None:
-        """Clears the list of user provided marshallers.
+        """Clear the list of user provided marshallers.
 
         Removes all user provided marshallers, but not the builtin ones
         from the ``hdf5storage.Marshallers`` module or those from
@@ -1387,9 +1362,9 @@ class MarshallerCollection:
 
     def get_marshaller_for_type(
         self: "MarshallerCollection",
-        tp: Union[str, Type[Any]],
-    ) -> Tuple[Optional[Marshallers.TypeMarshaller], bool]:
-        """Gets the appropriate marshaller for a type.
+        tp: str | type[Any],
+    ) -> tuple[marshallers.TypeMarshaller | None, bool]:
+        """Get the appropriate marshaller for a type.
 
         Retrieves the marshaller, if any, that can be used to read/write
         a Python object with type 'tp'. The modules it requires, if
@@ -1412,7 +1387,7 @@ class MarshallerCollection:
 
         See Also
         --------
-        hdf5storage.Marshallers.TypeMarshaller.types
+        hdf5storage.marshallers.TypeMarshaller.types
 
         """
         if not isinstance(tp, str):
@@ -1434,8 +1409,8 @@ class MarshallerCollection:
     def get_marshaller_for_type_string(
         self: "MarshallerCollection",
         type_string: str,
-    ) -> Tuple[Optional[Marshallers.TypeMarshaller], bool]:
-        """Gets the appropriate marshaller for a type string.
+    ) -> tuple[marshallers.TypeMarshaller | None, bool]:
+        """Get the appropriate marshaller for a type string.
 
         Retrieves the marshaller, if any, that can be used to read/write
         a Python object with the given type string. The modules it
@@ -1457,7 +1432,7 @@ class MarshallerCollection:
 
         See Also
         --------
-        hdf5storage.Marshallers.TypeMarshaller.python_type_strings
+        hdf5storage.marshallers.TypeMarshaller.python_type_strings
 
         """
         if type_string in self._type_strings:
@@ -1476,8 +1451,8 @@ class MarshallerCollection:
     def get_marshaller_for_matlab_class(
         self: "MarshallerCollection",
         matlab_class: str,
-    ) -> Tuple[Optional[Marshallers.TypeMarshaller], bool]:
-        """Gets the appropriate marshaller for a MATLAB class string.
+    ) -> tuple[marshallers.TypeMarshaller | None, bool]:
+        """Get the appropriate marshaller for a MATLAB class string.
 
         Retrieves the marshaller, if any, that can be used to read/write
         a Python object associated with the given MATLAB class
@@ -1499,7 +1474,7 @@ class MarshallerCollection:
 
         See Also
         --------
-        hdf5storage.Marshallers.TypeMarshaller.python_type_strings
+        hdf5storage.marshallers.TypeMarshaller.python_type_strings
 
         """
         if matlab_class in self._matlab_classes:
@@ -1559,7 +1534,6 @@ class File(collections.abc.MutableMapping):
 
     Example
     -------
-
        >>> import hdf5storage
        >>> with hdf5storage.File('data.h5', writable=True) as f:
        >>>     f.write(4, '/a')
@@ -1600,7 +1574,7 @@ class File(collections.abc.MutableMapping):
         The options to use when reading and/or writing. Is mutually
         exclusive with any additional keyword arguments given (set to
         ``None`` or don't provide the argument at all to use them).
-    **keywords :
+    **keywords : dict, optional
         If `options` was not provided or was ``None``, these are used as
         arguments to make a ``Options``.
 
@@ -1626,40 +1600,46 @@ class File(collections.abc.MutableMapping):
 
     """
 
-    def __init__(
+    def __init__(  # noqa: C901, PLR0912
         self: "File",
-        filename: str = "data.h5",
+        filename: str | Path = "data.h5",
         writable: bool = False,
         truncate_existing: bool = False,
         truncate_invalid_matlab: bool = False,
-        options: Optional[Options] = None,
-        **keywords: Any,
+        options: Options | None = None,
+        **keywords: dict,
     ) -> None:
         # Before we do anything else, we need to make the attributes for
         # the file handle, the options, and a lock. This way, these
         # attributes are available in __del__ even if there is an
         # exception in the constructor.
-        self._file: Optional[h5py.File] = None
+        self._file: h5py.File | None = None
         self._lock: threading.Lock = threading.Lock()
         # Check the types of the arguments.
-        if not isinstance(filename, str):
-            raise TypeError("filename must be str.")
+        if not isinstance(filename, str | Path):
+            msg = "filename must be str or Path."
+            raise TypeError(msg)
         if not isinstance(writable, bool):
-            raise TypeError("writable must be bool.")
+            msg = "writable must be bool."
+            raise TypeError(msg)
         if not isinstance(truncate_existing, bool):
-            raise TypeError("truncate_existing must be bool.")
+            msg = "truncate_existing must be bool."
+            raise TypeError(msg)
         if not isinstance(truncate_invalid_matlab, bool):
-            raise TypeError("truncate_invalid_matlab must be bool.")
+            msg = "truncate_invalid_matlab must be bool."
+            raise TypeError(msg)
         # Make the Options if we weren't given it, and shallow copy it
         # if it was given.
         if options is None:
             options = Options(**keywords)
         else:
             if not isinstance(options, Options):
-                raise TypeError("options must be an Options or None.")
+                msg = "options must be an Options or None."
+                raise TypeError(msg)
             if len(keywords) != 0:
+                msg = "Extra keyword arguments cannot be passed if options is not None."
                 raise ValueError(
-                    "Extra keyword arguments cannot be passed if options is not None.",
+                    msg,
                 )
             options = copy.copy(options)
         # Store the required arguments.
@@ -1683,15 +1663,11 @@ class File(collections.abc.MutableMapping):
             # allocated (smallest size is 512) for future use (after
             # all, someone might want to turn it to a .mat file later
             # and need it and it is only 512 bytes).
-            if truncate_existing or not os.path.isfile(filename):
+            if truncate_existing or not os.path.isfile(filename):  # noqa: PTH113
                 self._file = h5py.File(filename, mode="w", userblock_size=512)
             else:
                 self._file = h5py.File(filename, mode="a")
-                if (
-                    options.matlab_compatible
-                    and truncate_invalid_matlab
-                    and self._file.userblock_size < 128
-                ):
+                if options.matlab_compatible and truncate_invalid_matlab and self._file.userblock_size < 128:
                     self._file.close()
                     self._file = None
                     self._file = h5py.File(filename, mode="w", userblock_size=512)
@@ -1701,8 +1677,8 @@ class File(collections.abc.MutableMapping):
             if options.matlab_compatible and self._file.userblock_size >= 128:
                 self._file.close()
                 self._file = None
-                # Get the time.
-                now = datetime.datetime.utcnow()
+                # Get the time. Note: Python >=3.11, replace with datetime.UTC
+                now = datetime.datetime.now(tz=datetime.timezone.utc)  # noqa: UP017
                 # Construct the leading string. The MATLAB one looks
                 # like
                 #
@@ -1717,9 +1693,7 @@ class File(collections.abc.MutableMapping):
                 #
                 # For the month and day names, we are forcing the use
                 # of English names for MATLAB compatibility.
-                weekday: str = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")[
-                    now.weekday()
-                ]
+                weekday: str = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")[now.weekday()]
                 month: str = (
                     "Jan",
                     "Feb",
@@ -1748,7 +1722,7 @@ class File(collections.abc.MutableMapping):
                 # that MATLAB uses.
                 b.extend(bytearray.fromhex("00000000 00000000 0002494D"))
                 # Now, write it to the beginning of the file.
-                with open(filename, "r+b") as f:
+                with open(filename, "r+b") as f:  # noqa: PTH123
                     f.write(b)
                 # Done writing the userblock, so we can re-open the
                 # file.
@@ -1766,9 +1740,9 @@ class File(collections.abc.MutableMapping):
 
     def __exit__(
         self: "File",
-        tp: Optional[Type[BaseException]],
-        value: Optional[BaseException],
-        traceback: Optional[types.TracebackType],
+        tp: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
     ) -> None:
         """Close the HDF5 file."""
         self.close()
@@ -1784,7 +1758,7 @@ class File(collections.abc.MutableMapping):
         return self._file is None
 
     def close(self: "File") -> None:
-        """Closes the file."""
+        """Close the file."""
         with self._lock:
             if self._file is not None:
                 self._file.close()
@@ -1801,19 +1775,20 @@ class File(collections.abc.MutableMapping):
         """
         with self._lock:
             if self._file is None:
-                raise OSError("File is closed.")
+                msg = "File is closed."
+                raise OSError(msg)
             if self._writable:
                 self._file.flush()
 
-    def write(self: "File", data: Any, path: pathesc.Path = "/") -> None:
-        """Writes one piece of data into the file.
+    def write(self: "File", data: object, path: pathesc.Path = "/") -> None:
+        """Write one piece of data into the file.
 
         A wrapper around the ``writes`` method to write a single piece
         of data, `data`, to a single location, `path`.
 
         Parameters
         ----------
-        data : any
+        data : object
             The python object to write.
         path : str or bytes pathlib.PurePath or Iterable, optional
             The path to write the data to.  ``str`` and ``bytes`` paths
@@ -1877,11 +1852,13 @@ class File(collections.abc.MutableMapping):
         # Check the type of mdict. Technically a check of Mapping is
         # sufficient for dict but it is slow, so we check for dict
         # explicitly first.
-        if not isinstance(mdict, (dict, collections.abc.Mapping)):
-            raise TypeError("mdict must be a Mapping.")
+        if not isinstance(mdict, dict | collections.abc.Mapping):
+            msg = "mdict must be a Mapping."
+            raise TypeError(msg)
         # File had to be opened writable.
         if not self._writable:
-            raise OSError("File is not writable.")
+            msg = "File is not writable."
+            raise OSError(msg)
         # Go through mdict, extract the paths and data, and process the
         # paths. A list of tulpes for each piece of data to write will
         # be constructed where he first element is the group name, the
@@ -1892,10 +1869,7 @@ class File(collections.abc.MutableMapping):
         towrite = []
         for p, v in mdict.items():
             groupname, targetname = pathesc.process_path(p)
-            if posixpath.isabs(groupname):
-                prefix = ""
-            else:
-                prefix = "/"
+            prefix = "" if posixpath.isabs(groupname) else "/"
             if (
                 posixpath.commonpath(
                     (
@@ -1905,17 +1879,17 @@ class File(collections.abc.MutableMapping):
                 )
                 != "/"
             ):
+                msg = "Cannot write to paths inside the the Group specified by the group_for_references option."
                 raise ValueError(
-                    "Cannot write to paths inside the the "
-                    "Group specified by the "
-                    "group_for_references option.",
+                    msg,
                 )
             towrite.append((groupname, targetname, v))
         # File operations must be synchronized.
         with self._lock:
             # Check that the file is open.
             if self._file is None:
-                raise OSError("File is closed.")
+                msg = "File is closed."
+                raise OSError(msg)
             # Go through each element of towrite and write them with the
             # low level write function.
             for groupname, targetname, data in towrite:
@@ -1926,8 +1900,8 @@ class File(collections.abc.MutableMapping):
                     None,
                 )
 
-    def read(self: "File", path: pathesc.Path = "/") -> Any:
-        """Reads one piece of data from the file.
+    def read(self: "File", path: pathesc.Path = "/") -> object:
+        """Read one piece of data from the file.
 
         A wrapper around the ``reads`` method to read a single piece of
         data at the   single location `path`.
@@ -1940,7 +1914,7 @@ class File(collections.abc.MutableMapping):
 
         Returns
         -------
-        data : any
+        data : object
             The data that is read.
 
         Raises
@@ -1961,7 +1935,7 @@ class File(collections.abc.MutableMapping):
         """
         return self.reads((path,))[0]
 
-    def reads(self: "File", paths: Iterable[pathesc.Path]) -> List[Any]:
+    def reads(self: "File", paths: Iterable[pathesc.Path]) -> list[Any]:
         """Read pieces of data from the file.
 
         Parameters
@@ -1991,17 +1965,15 @@ class File(collections.abc.MutableMapping):
 
         """
         if not isinstance(paths, collections.abc.Iterable):
-            raise TypeError("paths must be an Iterable.")
+            msg = "paths must be an Iterable."
+            raise TypeError(msg)
         # Process the paths and stuff the group names and target names
         # as tuples into toread. We do not allow any paths inside the
         # Group specified by options.group_for_references.
         toread = []
         for p in paths:
             groupname, targetname = pathesc.process_path(p)
-            if posixpath.isabs(groupname):
-                prefix = ""
-            else:
-                prefix = "/"
+            prefix = "" if posixpath.isabs(groupname) else "/"
             if (
                 posixpath.commonpath(
                     (
@@ -2011,17 +1983,17 @@ class File(collections.abc.MutableMapping):
                 )
                 != "/"
             ):
+                msg = "Cannot read from paths inside the the Group specified by the group_for_references option."
                 raise ValueError(
-                    "Cannot read from paths inside the the "
-                    "Group specified by the "
-                    "group_for_references option.",
+                    msg,
                 )
             toread.append((groupname, targetname))
         # File operations must be synchronized.
         with self._lock:
             # Check that the file is open.
             if self._file is None:
-                raise OSError("File is closed.")
+                msg = "File is closed."
+                raise OSError(msg)
             # Read the data item by item
             datas = []
             for groupname, targetname in toread:
@@ -2054,7 +2026,8 @@ class File(collections.abc.MutableMapping):
         with self._lock:
             # Check that the file is open.
             if self._file is None:
-                raise OSError("File is closed.")
+                msg = "File is closed."
+                raise OSError(msg)
             # Get the length from the file, and then, if the Group for
             # references is in the root group, subtract one if it is
             # present (impossible if the length is zero).
@@ -2067,8 +2040,8 @@ class File(collections.abc.MutableMapping):
                 return length - 1
             return length
 
-    def __contains__(self: "File", path: Any) -> bool:
-        """Checks if an object exists at the specified `path`.
+    def __contains__(self: "File", path: pathesc.Path) -> bool:
+        """Check if an object exists at the specified `path`.
 
         Parameters
         ----------
@@ -2090,7 +2063,8 @@ class File(collections.abc.MutableMapping):
         with self._lock:
             # Check that the file is open.
             if self._file is None:
-                raise OSError("File is closed.")
+                msg = "File is closed."
+                raise OSError(msg)
             # Do the check.
             return posixpath.join(groupname, targetname) in self._file
 
@@ -2121,7 +2095,8 @@ class File(collections.abc.MutableMapping):
         with self._lock:
             # Check that the file is open.
             if self._file is None:
-                raise OSError("File is closed.")
+                msg = "File is closed."
+                raise OSError(msg)
             # We will use the output of the __iter__ method of the file,
             # but if the Group for references is in the root Group, we
             # will need to filter it out.
@@ -2132,8 +2107,8 @@ class File(collections.abc.MutableMapping):
                 return itertools.dropwhile(lambda k: k == refgrp, it)
             return it
 
-    def __getitem__(self: "File", path: pathesc.Path) -> Any:
-        """Reads the object at the specified `path` from the file.
+    def __getitem__(self: "File", path: pathesc.Path) -> object:
+        """Read the object at the specified `path` from the file.
 
         A wrapper around the ``reads`` method to read a single piece of
         data at the single location `path`.
@@ -2146,7 +2121,7 @@ class File(collections.abc.MutableMapping):
 
         Returns
         -------
-        data : any
+        data : object
             The data that is read.
 
         Raises
@@ -2165,8 +2140,8 @@ class File(collections.abc.MutableMapping):
         """
         return self.reads((path,))[0]
 
-    def __setitem__(self: "File", path: pathesc.Path, data: Any) -> None:
-        """Writes one piece of data into the file.
+    def __setitem__(self: "File", path: pathesc.Path, data: object) -> None:
+        """Write one piece of data into the file.
 
         A wrapper around the ``writes`` method to write a single piece
         of data, `data`, to a single location, `path`.
@@ -2178,7 +2153,7 @@ class File(collections.abc.MutableMapping):
             must be POSIX style. The directory name is the Group to put
             it in and the basename is the Dataset/Group name to write it
             to.
-        data : any
+        data : object
             The python object to write.
 
         Raises
@@ -2202,7 +2177,7 @@ class File(collections.abc.MutableMapping):
         self.writes({path: data})
 
     def __delitem__(self: "File", path: pathesc.Path) -> None:
-        """Deletes one path from the file.
+        """Delete one path from the file.
 
         Deletes one location from the file specified by `path`.
 
@@ -2226,19 +2201,21 @@ class File(collections.abc.MutableMapping):
         """
         # File had to be opened writable.
         if not self._writable:
-            raise OSError("File is not writable.")
+            msg = "File is not writable."
+            raise OSError(msg)
         # Process the path.
         groupname, targetname = pathesc.process_path(path)
         # File operations must be synchronized.
         with self._lock:
             # Check that the file is open.
             if self._file is None:
-                raise OSError("File is closed.")
+                msg = "File is closed."
+                raise OSError(msg)
             del self._file[posixpath.join(groupname, targetname)]
 
 
-def writes(mdict: Mapping[pathesc.Path, Any], **keywords: Any) -> None:
-    """Writes data into an HDF5 file.
+def writes(mdict: Mapping[pathesc.Path, object], **keywords: dict) -> None:
+    """Write data into an HDF5 file.
 
     Wrapper around ``File`` and ``File.writes``. Specifically, this
     function is
@@ -2254,7 +2231,7 @@ def writes(mdict: Mapping[pathesc.Path, Any], **keywords: Any) -> None:
         and ``bytes`` paths must be POSIX style) where the directory
         name is the Group to put it in and the basename is the name to
         write it to. The values are the data to write.
-    **keywords :
+    **keywords : dict, optional
         Extra keyword arguments to pass to ``File``.
 
     Raises
@@ -2283,8 +2260,8 @@ def writes(mdict: Mapping[pathesc.Path, Any], **keywords: Any) -> None:
         f.writes(mdict)
 
 
-def write(data: Any, path: pathesc.Path = "/", **keywords: Any) -> Any:
-    """Writes one piece of data into an HDF5 file.
+def write(data: object, path: pathesc.Path = "/", **keywords: dict) -> None:
+    """Write one piece of data into an HDF5 file.
 
     Wrapper around ``File`` and ``File.write``. Specifically, this
     function is
@@ -2294,7 +2271,7 @@ def write(data: Any, path: pathesc.Path = "/", **keywords: Any) -> Any:
 
     Parameters
     ----------
-    data : any
+    data : object
         The python object to write.
     path : str or bytes or pathlib.PurePath or Iterable, optional
         The path to write the data to. ``str`` and ``bytes`` paths must
@@ -2303,11 +2280,6 @@ def write(data: Any, path: pathesc.Path = "/", **keywords: Any) -> Any:
         ``'/'``.
     **keywords :
         Extra keyword arguments to pass to ``File``.
-
-    Returns
-    -------
-    data : any
-        The data that is read.
 
     Raises
     ------
@@ -2335,8 +2307,8 @@ def write(data: Any, path: pathesc.Path = "/", **keywords: Any) -> Any:
         f.write(data, path)
 
 
-def reads(paths: Iterable[pathesc.Path], **keywords: Any) -> List[Any]:
-    """Reads pieces of data from an HDF5 file.
+def reads(paths: Iterable[pathesc.Path], **keywords: dict) -> list[object]:
+    """Read pieces of data from an HDF5 file.
 
     Wrapper around ``File`` and ``File.reads`` with the exception that
     the ``matlab_compatible`` option is set to ``False`` if it isn't
@@ -2356,7 +2328,7 @@ def reads(paths: Iterable[pathesc.Path], **keywords: Any) -> List[Any]:
     paths : Iterable
         An iterable of paths to read data from. ``str`` and ``bytes``
         paths must be POSIX style.
-    **keywords :
+    **keywords : dict, optional
         Extra keyword arguments to pass to ``File``.
 
     Returns
@@ -2385,9 +2357,7 @@ def reads(paths: Iterable[pathesc.Path], **keywords: Any) -> List[Any]:
     File.read
 
     """
-    if "matlab_compatible" in keywords or (
-        "options" in keywords and keywords["options"] is not None
-    ):
+    if "matlab_compatible" in keywords or ("options" in keywords and keywords["options"] is not None):
         extra_kws = {}
     else:
         extra_kws = {"matlab_compatible": False}
@@ -2395,8 +2365,8 @@ def reads(paths: Iterable[pathesc.Path], **keywords: Any) -> List[Any]:
         return f.reads(paths)
 
 
-def read(path: pathesc.Path = "/", **keywords: Any) -> Any:
-    """Reads one piece of data from an HDF5 file.
+def read(path: pathesc.Path = "/", **keywords: dict) -> object:
+    """Read one piece of data from an HDF5 file.
 
     Wrapper around ``File`` and ``File.reads`` with the exception that
     the ``matlab_compatible`` option is set to ``False`` if it isn't
@@ -2416,8 +2386,13 @@ def read(path: pathesc.Path = "/", **keywords: Any) -> Any:
     path : str or bytes or pathlib.PurePath or Iterable, optional
         The path to read from. ``str`` and ``bytes`` paths must be POSIX
         style. The default is ``'/'``.
-    **keywords :
+    **keywords : dict, optional
         Extra keyword arguments to pass to ``File``.
+
+    Returns
+    -------
+    data: object
+        The data that is read.
 
     Raises
     ------
@@ -2439,10 +2414,8 @@ def read(path: pathesc.Path = "/", **keywords: Any) -> Any:
     File.reads
 
     """
-    extra_kws: Dict[str, bool]
-    if "matlab_compatible" in keywords or (
-        "options" in keywords and keywords["options"] is not None
-    ):
+    extra_kws: dict[str, bool]
+    if "matlab_compatible" in keywords or ("options" in keywords and keywords["options"] is not None):
         extra_kws = {}
     else:
         extra_kws = {"matlab_compatible": False}
@@ -2450,18 +2423,18 @@ def read(path: pathesc.Path = "/", **keywords: Any) -> Any:
         return f.read(path)
 
 
-def savemat(
-    file_name: str,
+def savemat(  # noqa: PLR0913
+    file_name: str | Path,
     mdict: Mapping[pathesc.Path, Any],
     appendmat: bool = True,
-    format: MatfileFormat = "7.3",
+    fmt: MatfileFormat = "7.3",
     oned_as: OnedAs = "row",
     store_python_metadata: bool = True,
     action_for_matlab_incompatible: ActionMatlabIncompatible = "error",
-    marshaller_collection: Optional[MarshallerCollection] = None,
+    marshaller_collection: MarshallerCollection | None = None,
     truncate_existing: bool = False,
     truncate_invalid_matlab: bool = False,
-    **keywords: Any,
+    **keywords: dict,
 ) -> None:
     """Save a dictionary of python objects to a MATLAB MAT file.
 
@@ -2487,7 +2460,7 @@ def savemat(
     appendmat : bool, optional
         Whether to append the '.mat' extension to `file_name` if it
         doesn't already end in it or not.
-    format : {'4', '5', '7.3'}, optional
+    fmt : {'4', '5', '7.3'}, optional
         The MATLAB mat file format to use. The '7.3' format is handled
         by this package while the '4' and '5' formats are dispatched to
         SciPy.
@@ -2512,7 +2485,7 @@ def savemat(
         Whether to truncate a file if the file doesn't have the proper
         header (userblock in HDF5 terms) setup for MATLAB metadata to be
         placed.
-    **keywords :
+    **keywords : dict, optional
         Additional keywords arguments to be passed onto
         ``scipy.io.savemat`` if dispatching to SciPy (`format` < 7.3).
 
@@ -2546,12 +2519,12 @@ def savemat(
     # If format is a number less than 7.3, the call needs to be
     # dispatched to the scipy version, if it is available, with all the
     # relevant and extra keywords options provided.
-    if float(format) < 7.3:
+    if float(fmt) < 7.3:
         importlib.import_module("scipy.io").savemat(
             file_name,
             mdict,
             appendmat=appendmat,
-            format=format,
+            format=fmt,
             oned_as=oned_as,
             **keywords,
         )
@@ -2564,6 +2537,8 @@ def savemat(
             file_name = file_name + ".mat"
         elif isinstance(file_name, bytes) and not file_name.endswith(b".mat"):
             file_name = file_name + b".mat"
+        elif isinstance(file_name, Path) and file_name.suffix != ".mat":
+            file_name = file_name.parent / (file_name.stem + ".mat")
 
     # Make the options with matlab compatibility forced.
     options = Options(
@@ -2584,16 +2559,16 @@ def savemat(
     )
 
 
-def loadmat(
-    file_name: str,
-    mdict: Optional[Dict[Any, Any]] = None,
+def loadmat(  # noqa: C901, PLR0912, PLR0913
+    file_name: str | Path,
+    mdict: dict[Any, Any] | None = None,
     appendmat: bool = True,
-    variable_names: Optional[Sequence[pathesc.Path]] = None,
-    marshaller_collection: Optional[MarshallerCollection] = None,
-    options: Optional[Options] = None,
-    **keywords: Any,
-) -> Dict[Any, Any]:
-    """Loads data to a MATLAB MAT file.
+    variable_names: Sequence[pathesc.Path] | None = None,
+    marshaller_collection: MarshallerCollection | None = None,
+    options: Options | None = None,
+    **keywords: dict,
+) -> dict[Any, Any]:
+    """Load data from a MATLAB MAT file.
 
     Reads data from the specified variables (or all) in a MATLAB MAT
     file. There are many different formats of MAT files. This package
@@ -2636,7 +2611,7 @@ def loadmat(
         use the default. If passed, it overrides the
         `marshaller_collection` argument. Only applicable if not
         dispatching to SciPy (version 7.3 and newer files).
-    **keywords :
+    **keywords : dict, optional
         Additional keywords arguments to be passed onto
         ``scipy.io.loadmat`` if dispatching to SciPy if the file is not
         a version 7.3 or later format.
@@ -2691,6 +2666,8 @@ def loadmat(
                 filename = file_name + ".mat"
             elif isinstance(file_name, bytes) and not file_name.endswith(b".mat"):
                 filename = file_name + b".mat"
+            elif isinstance(file_name, Path) and file_name.suffix != ".mat":
+                filename = file_name.parent / (file_name.stem + ".mat")
             else:
                 filename = file_name
         else:
@@ -2698,7 +2675,7 @@ def loadmat(
 
         # Read everything if we were instructed.
         with File(filename, writable=False, options=options) as f:
-            data: Dict[Any, Any]
+            data: dict[Any, Any]
             if variable_names is None:
                 data = {pathesc.unescape_path(k): v for k, v in f.items()}
             else:
@@ -2711,7 +2688,6 @@ def loadmat(
             mdict = data
         for k, v in data.items():
             mdict[k] = v
-        return mdict
     except OSError:
         return importlib.import_module("scipy.io").loadmat(
             file_name,
@@ -2720,10 +2696,12 @@ def loadmat(
             variable_names=variable_names,
             **keywords,
         )
+    else:
+        return mdict
 
 
 def get_default_marshaller_collection() -> MarshallerCollection:
-    """Gets the default MarshallerCollection.
+    """Get the default MarshallerCollection.
 
     The initial default only includes the builtin marshallers in the
     ``Marshallers`` submodule.
@@ -2733,7 +2711,7 @@ def get_default_marshaller_collection() -> MarshallerCollection:
     mc : MarshallerCollection
         The default MarshallerCollection.
 
-    Warning
+    Warning:
     -------
     Any changes made to `mc` after getting it will be persistent to
     future calls of this function till
@@ -2747,8 +2725,8 @@ def get_default_marshaller_collection() -> MarshallerCollection:
     return _default_marshaller_collection[0]
 
 
-def make_new_default_marshaller_collection(*args: Any, **keywords: Any) -> None:
-    """Makes a new default MarshallerCollection.
+def make_new_default_marshaller_collection(*args: tuple, **keywords: dict) -> None:
+    """Make a new default MarshallerCollection.
 
     Replaces the current default ``MarshallerCollection`` with a new
     one.
@@ -2779,5 +2757,5 @@ def make_new_default_marshaller_collection(*args: Any, **keywords: Any) -> None:
 # loading. This will be used as the source for those used in options. It
 # must be packed into a list so that it can be set from functions inside
 # this module without scoping problems.
-_default_marshaller_collection: List[MarshallerCollection] = []
+_default_marshaller_collection: list[MarshallerCollection] = []
 make_new_default_marshaller_collection(lazy_loading=True)

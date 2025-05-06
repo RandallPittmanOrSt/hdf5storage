@@ -28,14 +28,13 @@ import collections
 import contextlib
 import datetime
 import itertools
-import math
-import os.path
 import pathlib
 import posixpath
 import random
 import string
 import tempfile
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -66,6 +65,7 @@ from make_randoms import (
 )
 
 import hdf5storage
+import hdf5storage.exceptions
 
 random.seed()
 
@@ -95,7 +95,7 @@ dtypes_mat = [
     "S",
     "U",
 ]
-dtypes_non_mat = dtypes_mat + ["float16"]
+dtypes_non_mat = [*dtypes_mat, "float16"]
 
 # Make a lookup for the dtypes and assertion function to use given the
 # format.
@@ -125,7 +125,7 @@ options_by_format = {}
 
 
 @pytest.fixture(scope="module", autouse=True)
-def _get_options():
+def _get_options() -> None:
     options_by_format.update(
         {
             "PythonMatlab": hdf5storage.Options(
@@ -148,9 +148,9 @@ def _get_options():
     )
 
 
-# Function to write and then readback and optionall check everything
+# Function to write and then readback and optionally check everything
 # with the appropriate assert_equal.
-def write_readback(
+def write_readback(  # noqa: C901, PLR0913
     fmt,
     data,
     name=None,
@@ -176,23 +176,23 @@ def write_readback(
         pathlib.PureWindowsPath,
         pathlib.Path,
     )
-    name_type_w = random.choice(path_choices)
-    name_type_r = random.choice(path_choices)
+    name_type_w = random.choice(path_choices)  # noqa: S311
+    name_type_r = random.choice(path_choices)  # noqa: S311
     # Name to write with.
-    if name_type_w == bytes:
+    if name_type_w == bytes:  # noqa: E721
         name_w = name.encode("utf-8")
     elif name_type_w in (pathlib.PurePath, pathlib.PurePosixPath, pathlib.PosixPath):
         name_w = name_type_w(name)
-    elif name_type_w != str:
+    elif name_type_w != str:  # noqa: E721
         name_w = name_type_w(name[posixpath.isabs(name) :])
     else:
         name_w = name
     # Name to read with.
-    if name_type_r == bytes:
+    if name_type_r == bytes:  # noqa: E721
         name_r = name.encode("utf-8")
     elif name_type_r in (pathlib.PurePath, pathlib.PurePosixPath, pathlib.PosixPath):
         name_r = name_type_r(name)
-    elif name_type_r != str:
+    elif name_type_r != str:  # noqa: E721
         name_r = name_type_r(name[posixpath.isabs(name) :])
     else:
         name_r = name
@@ -201,7 +201,7 @@ def write_readback(
     # from building up. Different options can be used for reading the
     # data back.
     with tempfile.TemporaryDirectory() as folder:
-        filename = os.path.join(folder, "data.h5")
+        filename = Path(folder) / "data.h5"
         hdf5storage.write(data, path=name_w, filename=filename, options=write_options)
         out = hdf5storage.read(path=name_r, filename=filename, options=read_options)
     if check:
@@ -222,12 +222,7 @@ def test_numpy_scalar(fmt, dtype):
 
 @pytest.mark.parametrize(
     ("fmt", "dtype", "dimensions"),
-    {
-        (fmt, dt, dims)
-        for fmt in fmts
-        for dt in dtypes_by_option[fmt]
-        for dims in range(1, 4)
-    },
+    {(fmt, dt, dims) for fmt in fmts for dt in dtypes_by_option[fmt] for dims in range(1, 4)},
 )
 def test_numpy_array(fmt, dtype, dimensions):
     # Makes a random numpy array of the given type, writes it and
@@ -289,21 +284,13 @@ def test_numpy_structured_array_unicode_fields(fmt):
     # in its fields, writes it and reads it back, and then compares
     # it.
     shape = random_numpy_shape(1, max_structured_ndarray_axis_length)
-    data = (
-        random_structured_numpy_array(shape, nonascii_fields=True)
-        .view(np.recarray)
-        .copy()
-    )
+    data = random_structured_numpy_array(shape, nonascii_fields=True)
     write_readback(fmt, data)
 
 
 @pytest.mark.parametrize(
     ("fmt", "ch"),
-    {
-        (fmt, ch)
-        for fmt in fmts
-        for ch in ["\x00", "/", "\\"] + [i * "." for i in range(1, 10)]
-    },
+    {(fmt, ch) for fmt in fmts for ch in ["\x00", "/", "\\"] + [i * "." for i in range(1, 10)]},
 )
 def test_numpy_structured_array_field_special_char(fmt, ch):
     # Makes a random 1d structured ndarray with the character
@@ -370,17 +357,13 @@ def test_numpy_recarray_unicode_fields(fmt):
     # in its fields, converts it to a recarray, writes it and reads
     # it back, and then compares it.
     shape = random_numpy_shape(1, max_structured_ndarray_axis_length)
-    data = random_structured_numpy_array(shape, nonascii_fields=True)
+    data = random_structured_numpy_array(shape, nonascii_fields=True).view(np.recarray).copy()
     write_readback(fmt, data)
 
 
 @pytest.mark.parametrize(
     ("fmt", "ch"),
-    {
-        (fmt, ch)
-        for fmt in fmts
-        for ch in ["\x00", "/", "\\"] + [i * "." for i in range(1, 10)]
-    },
+    {(fmt, ch) for fmt in fmts for ch in ["\x00", "/", "\\"] + [i * "." for i in range(1, 10)]},
 )
 def test_numpy_recarray_field_special_char(fmt, ch):
     # Makes a random 1d structured ndarray with the character
@@ -393,9 +376,7 @@ def test_numpy_recarray_field_special_char(fmt, ch):
     else:
         field_names[1] = field_names[1][0] + ch + field_names[1][1:]
     shape = random_numpy_shape(1, max_structured_ndarray_axis_length)
-    data = (
-        random_structured_numpy_array(shape, names=field_names).view(np.recarray).copy()
-    )
+    data = random_structured_numpy_array(shape, names=field_names).view(np.recarray).copy()
     write_readback(fmt, data)
 
 
@@ -407,7 +388,7 @@ def test_numpy_chararray(fmt, dimensions):
     # Makes a random numpy array of bytes, converts it to a
     # chararray, writes it and reads it back, and then compares it.
     shape = random_numpy_shape(dimensions, max_array_axis_length)
-    data = random_numpy(shape, "S").view(np.chararray).copy()
+    data = random_numpy(shape, "S").view(np.char.chararray).copy()
     write_readback(fmt, data)
 
 
@@ -419,14 +400,11 @@ def test_numpy_chararray_empty(fmt, num_chars):
     # Makes an empty numpy array of bytes of the given number of
     # characters, converts it to a chararray, writes it and reads it
     # back, and then compares it.
-    data = np.array([], "S" + str(num_chars)).view(np.chararray).copy()
+    data = np.array([], "S" + str(num_chars)).view(np.char.chararray).copy()
     write_readback(fmt, data)
 
 
-@pytest.mark.parametrize(
-    ("fmt", "zero_shaped"),
-    {(fmt, z) for fmt in fmts for z in (True, False)},
-)
+@pytest.mark.parametrize(("fmt", "zero_shaped"), [(fmt, z) for fmt in fmts for z in (True, False)])
 def test_numpy_sized_dtype_nested_0(fmt, zero_shaped):
     dtypes = (
         "uint8",
@@ -442,9 +420,8 @@ def test_numpy_sized_dtype_nested_0(fmt, zero_shaped):
         "complex64",
         "complex128",
     )
-    for _ in range(10):
-        dt = (random.choice(dtypes), (2, 2 * zero_shaped))
-        data = np.zeros((2,), dtype=dt)
+    for dtype in dtypes:
+        data = np.zeros(shape=(2, 2, 2 * zero_shaped), dtype=dtype)
         write_readback(fmt, data)
 
 
@@ -469,11 +446,11 @@ def test_numpy_sized_dtype_nested_1(fmt, zero_shaped):
     )
     for _ in range(10):
         dt = [
-            ("a", random.choice(dtypes), (1, 2)),
-            ("b", random.choice(dtypes), (1, 1, 4 * zero_shaped)),
-            ("c", [("a", random.choice(dtypes)), ("b", random.choice(dtypes), (1, 2))]),
+            ("a", random.choice(dtypes), (1, 2)),  # noqa: S311
+            ("b", random.choice(dtypes), (1, 1, 4 * zero_shaped)),  # noqa: S311
+            ("c", [("a", random.choice(dtypes)), ("b", random.choice(dtypes), (1, 2))]),  # noqa: S311
         ]
-        data = np.zeros((random.randrange(1, 4),), dtype=dt)
+        data = np.zeros((random.randrange(1, 4),), dtype=dt)  # noqa: S311
         write_readback(fmt, data)
 
 
@@ -498,19 +475,19 @@ def test_numpy_sized_dtype_nested_2(fmt, zero_shaped):
     )
     for _ in range(10):
         dt = [
-            ("a", random.choice(dtypes), (1, 3)),
+            ("a", random.choice(dtypes), (1, 3)),  # noqa: S311
             (
                 "b",
                 [
-                    ("a", random.choice(dtypes), (2,)),
-                    ("b", random.choice(dtypes), (1, 2, 1)),
+                    ("a", random.choice(dtypes), (2,)),  # noqa: S311
+                    ("b", random.choice(dtypes), (1, 2, 1)),  # noqa: S311
                 ],
             ),
             (
                 "c",
                 [
-                    ("a", random.choice(dtypes), (3 * zero_shaped, 1)),
-                    ("b", random.choice(dtypes), (2,)),
+                    ("a", random.choice(dtypes), (3 * zero_shaped, 1)),  # noqa: S311
+                    ("b", random.choice(dtypes), (2,)),  # noqa: S311
                 ],
                 (2, 1),
             ),
@@ -540,19 +517,19 @@ def test_numpy_sized_dtype_nested_3(fmt, zero_shaped):
     )
     for _ in range(10):
         dt = [
-            ("a", random.choice(dtypes), (3, 2)),
+            ("a", random.choice(dtypes), (3, 2)),  # noqa: S311
             (
                 "b",
                 [
-                    ("a", [("a", random.choice(dtypes))], (2, 2)),
-                    ("b", random.choice(dtypes), (1, 2)),
+                    ("a", [("a", random.choice(dtypes))], (2, 2)),  # noqa: S311
+                    ("b", random.choice(dtypes), (1, 2)),  # noqa: S311
                 ],
             ),
             (
                 "c",
                 [
-                    ("a", [("a", random.choice(dtypes), (2, 1, zero_shaped * 2))]),
-                    ("b", random.choice(dtypes)),
+                    ("a", [("a", random.choice(dtypes), (2, 1, zero_shaped * 2))]),  # noqa: S311
+                    ("b", random.choice(dtypes)),  # noqa: S311
                 ],
             ),
         ]
@@ -574,34 +551,34 @@ def test_python_collection(fmt, tp, same_dims):
     # reads it back, and then compares it.
     if tp in (set, frozenset):
         data = tp(random_list(max_list_length, python_or_numpy="python"))
-    else:
-        if same_dims == "same-dims":
-            shape = random_numpy_shape(random.randrange(2, 4), random.randrange(1, 4))
-            dtypes = (
-                "uint8",
-                "uint16",
-                "uint32",
-                "uint64",
-                "int8",
-                "int16",
-                "int32",
-                "int64",
-                "float32",
-                "float64",
-                "complex64",
-                "complex128",
-            )
-            data = tp(
-                [
-                    random_numpy(shape, random.choice(dtypes), allow_nan=True)
-                    for i in range(random.randrange(2, 7))
-                ],
-            )
+    elif same_dims == "same-dims":
+        shape = random_numpy_shape(random.randrange(2, 4), random.randrange(1, 4))  # noqa: S311
+        dtypes = (
+            "uint8",
+            "uint16",
+            "uint32",
+            "uint64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "float32",
+            "float64",
+            "complex64",
+            "complex128",
+        )
+        data = tp(
+            [
+                random_numpy(shape, random.choice(dtypes), allow_nan=True)  # noqa: S311
+                for i in range(random.randrange(2, 7))  # noqa: S311
+            ],
+        )
 
-        elif same_dims == "diff-dims":
-            data = tp(random_list(max_list_length, python_or_numpy="numpy"))
-        else:
-            raise ValueError("invalid value of same_dims")
+    elif same_dims == "diff-dims":
+        data = tp(random_list(max_list_length, python_or_numpy="numpy"))
+    else:
+        msg = "invalid value of same_dims"
+        raise ValueError(msg)
     write_readback(fmt, data)
 
 
@@ -617,7 +594,7 @@ def test_dict_like(fmt, tp):
         (fmt, tp, otp)
         for fmt in fmts
         for tp in dict_like
-        for otp in ("bytes", "numpy.bytes_", "numpy.unicode_", "int", "float")
+        for otp in ("bytes", "numpy.bytes_", "numpy.str_", "int", "float")
     },
 )
 def test_dict_like_other_type_key(fmt, tp, other_tp):
@@ -626,8 +603,8 @@ def test_dict_like_other_type_key(fmt, tp, other_tp):
     key_gen = random_str_some_unicode(max_dict_key_length)
     if other_tp == "numpy.bytes_":
         key = np.bytes_(key_gen.encode("UTF-8"))
-    elif other_tp == "numpy.unicode_":
-        key = np.unicode_(key_gen)
+    elif other_tp == "numpy.str_":
+        key = np.str_(key_gen)
     elif other_tp == "bytes":
         key = key_gen.encode("UTF-8")
     elif other_tp == "int":
@@ -669,38 +646,38 @@ def test_dict_like_key_back_slash(fmt, tp):
 @pytest.mark.parametrize(("fmt", "tp"), {(fmt, tp) for fmt in fmts for tp in dict_like})
 def test_dict_like_key_leading_periods(fmt, tp):
     data = random_dict(tp)
-    prefix = "." * random.randint(1, 10)
+    prefix = "." * random.randint(1, 10)  # noqa: S311
     key = prefix + random_str_ascii(max_dict_key_length)
     data[key] = random_int()
     write_readback(fmt, data)
 
 
 @pytest.mark.parametrize("fmt", fmts)
-def test_None(fmt):
+def test_none(fmt):
     data = None
     write_readback(fmt, data, random_name())
 
 
 @pytest.mark.parametrize("fmt", fmts)
-def test_Ellipsis(fmt):
+def test_ellipsis(fmt):
     data = Ellipsis
     write_readback(fmt, data)
 
 
 @pytest.mark.parametrize("fmt", fmts)
-def test_NotImplemented(fmt):
+def test_notimplemented(fmt):
     data = NotImplemented
     write_readback(fmt, data)
 
 
 @pytest.mark.parametrize("fmt", fmts)
-def test_bool_True(fmt):
+def test_bool_true(fmt):
     data = True
     write_readback(fmt, data)
 
 
 @pytest.mark.parametrize("fmt", fmts)
-def test_bool_False(fmt):
+def test_bool_false(fmt):
     data = False
     write_readback(fmt, data)
 
@@ -745,7 +722,7 @@ def test_float_ninf(fmt):
 def test_float_nan(fmt):
     data = float(np.nan)
     out = write_readback(fmt, data, check=False)
-    assert math.isnan(out)
+    assert np.all(np.isnan(out))
 
 
 @pytest.mark.parametrize("fmt", fmts)
@@ -768,7 +745,7 @@ def test_complex_imaginary_nan(fmt):
 
 @pytest.mark.parametrize("fmt", fmts)
 def test_str_ascii(fmt):
-    data = random_str_ascii(random.randint(1, max_string_length))
+    data = random_str_ascii(random.randint(1, max_string_length))  # noqa: S311
     write_readback(fmt, data)
 
 
@@ -776,22 +753,22 @@ def test_str_ascii(fmt):
 def test_str_ascii_encoded_utf8(fmt):
     ltrs = string.ascii_letters + string.digits
     data = "a"
-    while all([(c in ltrs) for c in data]):
-        data = random_str_some_unicode(random.randint(1, max_string_length))
+    while all((c in ltrs) for c in data):
+        data = random_str_some_unicode(random.randint(1, max_string_length))  # noqa: S311
     data = data.encode("utf-8")
     write_readback(fmt, data)
 
 
 @pytest.mark.parametrize("fmt", fmts)
 def test_str_with_null(fmt):
-    strs = [random_str_ascii(random.randint(1, max_string_length)) for i in range(2)]
+    strs = [random_str_ascii(random.randint(1, max_string_length)) for i in range(2)]  # noqa: S311
     data = "\x00".join(strs)
     write_readback(fmt, data)
 
 
 @pytest.mark.parametrize("fmt", fmts)
 def test_str_unicode(fmt):
-    data = random_str_some_unicode(random.randint(1, max_string_length))
+    data = random_str_some_unicode(random.randint(1, max_string_length))  # noqa: S311
     write_readback(fmt, data)
 
 
@@ -803,7 +780,7 @@ def test_str_empty(fmt):
 
 @pytest.mark.parametrize("fmt", fmts)
 def test_bytes(fmt):
-    data = random_bytes(random.randint(1, max_string_length))
+    data = random_bytes(random.randint(1, max_string_length))  # noqa: S311
     write_readback(fmt, data)
 
 
@@ -815,14 +792,14 @@ def test_bytes_empty(fmt):
 
 @pytest.mark.parametrize("fmt", fmts)
 def test_bytes_with_null(fmt):
-    strs = [random_bytes(random.randint(1, max_string_length)) for i in range(2)]
+    strs = [random_bytes(random.randint(1, max_string_length)) for i in range(2)]  # noqa: S311
     data = b"\x00".join(strs)
     write_readback(fmt, data)
 
 
 @pytest.mark.parametrize("fmt", fmts)
 def test_bytearray(fmt):
-    data = bytearray(random_bytes(random.randint(1, max_string_length)))
+    data = bytearray(random_bytes(random.randint(1, max_string_length)))  # noqa: S311
     write_readback(fmt, data)
 
 
@@ -866,8 +843,7 @@ def test_fraction(fmt):
         for dt in {
             v
             for v in itertools.chain(np.sctypeDict, np.sctypeDict.values())
-            if not isinstance(v, int)
-            and v not in ("V", "void", "void0", "Void0", np.void)
+            if not isinstance(v, int) and v not in ("V", "void", "void0", "Void0", np.void)
         }
     },
 )
@@ -901,7 +877,7 @@ def test_dtype_flexible(fmt):
 )
 def test_dtype_shaped(fmt, base_dtype):
     for _ in range(10):
-        desc = (base_dtype, random_numpy_shape(random.randint(1, 4), 10))
+        desc = (base_dtype, random_numpy_shape(random.randint(1, 4), 10))  # noqa: S311
         write_readback(fmt, np.dtype(desc))
 
 
@@ -909,16 +885,16 @@ def test_dtype_shaped(fmt, base_dtype):
 def test_dtype_structured(fmt):
     for _ in range(10):
         names = []
-        for _ in range(random.randint(1, 5)):
-            s = random_str_ascii(random.randint(1, 10))
+        for _ in range(random.randint(1, 5)):  # noqa: S311
+            s = random_str_ascii(random.randint(1, 10))  # noqa: S311
             while s in names or s[0].isdigit():
-                s = random_str_ascii(random.randint(1, 10))
+                s = random_str_ascii(random.randint(1, 10))  # noqa: S311
             names.append(s)
         desc = [
             (
                 v,
-                random.choice(base_dtypes),
-                random_numpy_shape(random.randint(1, 4), 10),
+                random.choice(base_dtypes),  # noqa: S311
+                random_numpy_shape(random.randint(1, 4), 10),  # noqa: S311
             )
             for v in names
         ]
@@ -930,22 +906,22 @@ def test_dtype_structured(fmt):
 def test_dtype_structured_with_offsets_titles(fmt):
     for _ in range(10):
         names = []
-        for _ in range(random.randint(1, 5)):
-            s = random_str_ascii(random.randint(1, 10))
+        for _ in range(random.randint(1, 5)):  # noqa: S311
+            s = random_str_ascii(random.randint(1, 10))  # noqa: S311
             while s in names or s[0].isdigit():
-                s = random_str_ascii(random.randint(1, 10))
+                s = random_str_ascii(random.randint(1, 10))  # noqa: S311
             names.append(s)
         titles = []
         for _ in range(len(names)):
-            s = random_str_some_unicode(random.randint(1, 10))
+            s = random_str_some_unicode(random.randint(1, 10))  # noqa: S311
             while s in titles or s in names:
-                s = random_str_some_unicode(random.randint(1, 10))
+                s = random_str_some_unicode(random.randint(1, 10))  # noqa: S311
             titles.append(s)
         formats = [
-            (random.choice(base_dtypes), random_numpy_shape(random.randint(1, 4), 10))
+            (random.choice(base_dtypes), random_numpy_shape(random.randint(1, 4), 10))  # noqa: S311
             for _ in range(len(names))
         ]
-        offsets = [random.randint(0, 100) for _ in range(len(names))]
+        offsets = [random.randint(0, 100) for _ in range(len(names))]  # noqa: S311
         desc = {
             "names": names,
             "formats": formats,
@@ -953,10 +929,7 @@ def test_dtype_structured_with_offsets_titles(fmt):
             "offsets": offsets,
         }
         desc_with_itemsize = desc.copy()
-        desc_with_itemsize["itemsize"] = np.dtype(desc).itemsize + random.randint(
-            1,
-            100,
-        )
+        desc_with_itemsize["itemsize"] = np.dtype(desc).itemsize + random.randint(1, 100)  # noqa: S311
         # Make the dtypes in all combinations of the description and
         # align. Note that if the type isn't valid at all, it is not
         # tested.
@@ -973,9 +946,9 @@ def test_dtype_structured_with_offsets_titles(fmt):
 def test_datetime_timedelta(fmt):
     for _ in range(10):
         data = datetime.timedelta(
-            days=random.randint(-20, 20),
-            seconds=random.randint(-1000, 1000),
-            microseconds=random.randint(-(1000**3), 1000**3),
+            days=random.randint(-20, 20),  # noqa: S311
+            seconds=random.randint(-1000, 1000),  # noqa: S311
+            microseconds=random.randint(-(1000**3), 1000**3),  # noqa: S311
         )
         write_readback(fmt, data)
 
@@ -991,9 +964,9 @@ def test_datetime_timezone(fmt):
 def test_datetime_date(fmt):
     for _ in range(10):
         data = datetime.date(
-            year=random.randint(datetime.MINYEAR, datetime.MAXYEAR),
-            month=random.randint(1, 12),
-            day=random.randint(1, 28),
+            year=random.randint(datetime.MINYEAR, datetime.MAXYEAR),  # noqa: S311
+            month=random.randint(1, 12),  # noqa: S311
+            day=random.randint(1, 28),  # noqa: S311
         )
         write_readback(fmt, data)
 
@@ -1002,10 +975,10 @@ def test_datetime_date(fmt):
 def test_datetime_time(fmt):
     for _ in range(10):
         data = datetime.time(
-            hour=random.randint(0, 23),
-            minute=random.randint(0, 59),
-            second=random.randint(0, 59),
-            microsecond=random.randint(0, 999999),
+            hour=random.randint(0, 23),  # noqa: S311
+            minute=random.randint(0, 59),  # noqa: S311
+            second=random.randint(0, 59),  # noqa: S311
+            microsecond=random.randint(0, 999999),  # noqa: S311
             tzinfo=random_datetime_timezone(),
         )
         write_readback(fmt, data)
@@ -1015,13 +988,13 @@ def test_datetime_time(fmt):
 def test_datetime_datetime(fmt):
     for _ in range(10):
         data = datetime.datetime(
-            year=random.randint(datetime.MINYEAR, datetime.MAXYEAR),
-            month=random.randint(1, 12),
-            day=random.randint(1, 28),
-            hour=random.randint(0, 23),
-            minute=random.randint(0, 59),
-            second=random.randint(0, 59),
-            microsecond=random.randint(0, 999999),
+            year=random.randint(datetime.MINYEAR, datetime.MAXYEAR),  # noqa: S311
+            month=random.randint(1, 12),  # noqa: S311
+            day=random.randint(1, 28),  # noqa: S311
+            hour=random.randint(0, 23),  # noqa: S311
+            minute=random.randint(0, 59),  # noqa: S311
+            second=random.randint(0, 59),  # noqa: S311
+            microsecond=random.randint(0, 999999),  # noqa: S311
             tzinfo=random_datetime_timezone(),
         )
         write_readback(fmt, data)

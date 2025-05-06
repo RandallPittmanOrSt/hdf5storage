@@ -24,10 +24,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os.path
+import importlib.metadata
 import tempfile
+from pathlib import Path
 
-import pkg_resources
 import pytest
 
 import hdf5storage
@@ -36,15 +36,15 @@ import hdf5storage.plugins
 # Check if the example package is installed because some tests will
 # depend on it.
 try:
-    import example_hdf5storage_marshaller_plugin
+    import example_hdf5storage_marshaller_plugin  # type: ignore  # noqa: PGH003
 
     has_example_hdf5storage_marshaller_plugin = True
-except:
+except ImportError:
     has_example_hdf5storage_marshaller_plugin = False
 
 
 def test_marshaller_api_versions():
-    assert ("1.0",) == hdf5storage.plugins.supported_marshaller_api_versions()
+    assert hdf5storage.plugins.supported_marshaller_api_versions() == ("1.0",)
 
 
 def test_find_thirdparty_marshaller_plugins():
@@ -58,7 +58,7 @@ def test_find_thirdparty_marshaller_plugins():
         assert isinstance(v, dict)
         for k2, v2 in v.items():
             assert isinstance(k2, str)
-            assert isinstance(v2, pkg_resources.EntryPoint)
+            assert isinstance(v2, importlib.metadata.EntryPoint)
             if k2 == "example_hdf5storage_marshaller_plugin":
                 found_example = True
     assert has_example_hdf5storage_marshaller_plugin == found_example
@@ -68,7 +68,7 @@ def test_find_thirdparty_marshaller_plugins():
     not has_example_hdf5storage_marshaller_plugin,
     reason="requires example_hdf5storage_marshaller_plugin",
 )
-def test_plugin_marshaller_SubList():
+def test_plugin_marshaller_sublist():
     mc = hdf5storage.MarshallerCollection(load_plugins=True, lazy_loading=True)
     options = hdf5storage.Options(
         store_python_metadata=True,
@@ -79,8 +79,8 @@ def test_plugin_marshaller_SubList():
     data = example_hdf5storage_marshaller_plugin.SubList(ell)
     name = "/a"
     with tempfile.TemporaryDirectory() as folder:
-        filename = os.path.join(folder, "data.h5")
+        filename = Path(folder) / "data.h5"
         hdf5storage.write(data, path=name, filename=filename, options=options)
         out = hdf5storage.read(path=name, filename=filename, options=options)
     assert ell == list(out)
-    assert type(out) == example_hdf5storage_marshaller_plugin.SubList
+    assert type(out) is example_hdf5storage_marshaller_plugin.SubList

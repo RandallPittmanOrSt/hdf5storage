@@ -34,7 +34,6 @@ import sys
 import warnings
 
 import numpy as np
-import numpy.random
 
 random.seed()
 
@@ -82,13 +81,13 @@ max_structured_ndarray_subarray_axis_length = 4
 def random_str_ascii_letters(length):
     # Makes a random ASCII str of the specified length.
     ltrs = string.ascii_letters
-    return "".join([random.choice(ltrs) for i in range(0, length)])
+    return "".join([random.choice(ltrs) for i in range(length)])
 
 
 def random_str_ascii(length):
     # Makes a random ASCII str of the specified length.
     ltrs = string.ascii_letters + string.digits
-    return "".join([random.choice(ltrs) for i in range(0, length)])
+    return "".join([random.choice(ltrs) for i in range(length)])
 
 
 def random_str_some_unicode(length):
@@ -97,21 +96,21 @@ def random_str_some_unicode(length):
     ltrs = random_str_ascii(10)
     ltrs += "αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩς"
     c = ""
-    return c.join([random.choice(ltrs) for i in range(0, length)])
+    return c.join([random.choice(ltrs) for i in range(length)])
 
 
 def random_bytes(length):
     # Makes a random sequence of bytes of the specified length from
     # the ASCII set.
     ltrs = bytes(range(1, 127))
-    return bytes([random.choice(ltrs) for i in range(0, length)])
+    return bytes([random.choice(ltrs) for i in range(length)])
 
 
 def random_bytes_fullrange(length):
     # Makes a random sequence of bytes of the specified length from
     # the ASCII set.
     ltrs = bytes(range(1, 255))
-    return bytes([random.choice(ltrs) for i in range(0, length)])
+    return bytes([random.choice(ltrs) for i in range(length)])
 
 
 def random_int():
@@ -122,7 +121,7 @@ def random_float():
     return random.uniform(-1.0, 1.0) * 10.0 ** random.randint(-300, 300)
 
 
-def random_numpy(
+def random_numpy(  # noqa: C901
     shape,
     dtype,
     allow_nan=True,
@@ -144,21 +143,15 @@ def random_numpy(
         length = random.randint(1, max_string_length)
         data = np.zeros(shape=shape, dtype="S" + str(length))
         for index, _ in np.ndenumerate(data):
-            if allow_unicode:
-                chars = random_bytes_fullrange(length)
-            else:
-                chars = random_bytes(length)
+            chars = random_bytes_fullrange(length) if allow_unicode else random_bytes(length)
             data[index] = np.bytes_(chars)
         return data
     if dtype == "U":
         length = random.randint(1, max_string_length)
         data = np.zeros(shape=shape, dtype="U" + str(length))
         for index, _ in np.ndenumerate(data):
-            if allow_unicode:
-                chars = random_str_some_unicode(length)
-            else:
-                chars = random_str_ascii(length)
-            data[index] = np.unicode_(chars)
+            chars = random_str_some_unicode(length) if allow_unicode else random_str_ascii(length)
+            data[index] = np.str_(chars)
         return data
     if dtype == "object":
         if object_element_dtypes is None:
@@ -174,7 +167,7 @@ def random_numpy(
             )
         return data
     nbytes = np.ndarray(shape=(1,), dtype=dtype).nbytes
-    bts = np.random.bytes(nbytes * np.prod(shape))
+    bts = np.random.default_rng().bytes(nbytes * np.prod(shape))
     if dtype == "bool":
         bts = b"".join([{True: b"\x01", False: b"\x00"}[ch > 127] for ch in bts])
     data = np.ndarray(shape=shape, dtype=dtype, buffer=bts)
@@ -201,7 +194,7 @@ def random_numpy_scalar(dtype, object_element_dtypes=None):
     if dtype == "S":
         return np.bytes_(random_bytes(random.randint(1, max_string_length)))
     if dtype == "U":
-        return np.unicode_(random_str_ascii(random.randint(1, max_string_length)))
+        return np.str_(random_str_ascii(random.randint(1, max_string_length)))
     return random_numpy(
         (),
         dtype,
@@ -212,7 +205,7 @@ def random_numpy_scalar(dtype, object_element_dtypes=None):
 def random_numpy_shape(dimensions, max_length, min_length=1):
     # Makes a random shape tuple having the specified number of
     # dimensions. The maximum size along each axis is max_length.
-    return tuple([random.randint(min_length, max_length) for x in range(0, dimensions)])
+    return tuple([random.randint(min_length, max_length) for x in range(dimensions)])
 
 
 def random_list(n, python_or_numpy="numpy"):
@@ -266,7 +259,7 @@ def random_dict(tp="dict"):
     # randomized keys with random numpy arrays as values). The only
     # supported values of tp are 'dict', 'OrderedDict', and 'Counter'.
     data = {}
-    for _ in range(0, random.randint(min_dict_keys, max_dict_keys)):
+    for _ in range(random.randint(min_dict_keys, max_dict_keys)):
         name = random_str_ascii(max_dict_key_length)
         if tp == "Counter":
             data[name] = random.randint(-(2**65), 2**65)
@@ -296,10 +289,7 @@ def random_dict(tp="dict"):
 def random_chainmap():
     # Make list of random dicts and pass them.
     return collections.ChainMap(
-        *[
-            random_dict(random.choice(("dict", "OrderedDict", "Counter")))
-            for i in range(random.randint(3, 8))
-        ],
+        *[random_dict(random.choice(("dict", "OrderedDict", "Counter"))) for i in range(random.randint(3, 8))],
     )
 
 
@@ -326,13 +316,7 @@ def random_structured_numpy_array(
             name_func = random_str_ascii
         names = [
             name_func(max_structured_ndarray_field_lengths)
-            for i in range(
-                0,
-                random.randint(
-                    min_structured_ndarray_fields,
-                    max_structured_ndarray_fields,
-                ),
-            )
+            for i in range(random.randint(min_structured_ndarray_fields, max_structured_ndarray_fields))
         ]
     dts = [random.choice(list(set(dtypes) - {"S", "U"})) for _ in range(len(names))]
     if field_shapes is None:
@@ -382,7 +366,7 @@ def random_name():
     # Makes a random POSIX path of a random depth.
     depth = random.randint(1, max_posix_path_depth)
     path = "/"
-    for _ in range(0, depth):
+    for _ in range(depth):
         path = posixpath.join(
             path,
             random_str_ascii(random.randint(1, max_posix_path_lengths)),
