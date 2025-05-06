@@ -13,13 +13,13 @@ wants to be able to read possibly HDF5 and MAT files from untrusted
 sources, so pickling is avoided in this package.
 
 The package's documetation is found at
-http://pythonhosted.org/hdf5storage/
+https://hdf5storage.readthedocs.io
 
 The package's source code is found at
-https://github.com/frejanordsiek/hdf5storage
+https://github.com/jclds139/hdf5storage
 
 The package is licensed under a 2-clause BSD license
-(https://github.com/frejanordsiek/hdf5storage/blob/master/COPYING.txt).
+(https://github.com/jclds139/hdf5storage/blob/master/COPYING.txt).
 
 Installation
 ============
@@ -27,16 +27,16 @@ Installation
 Dependencies
 ------------
 
-This package only supports Python >= 3.7. Python < 3.7 support was dropped
+This package only supports Python >= 3.10. Python < 3.10 support was dropped
 in version 0.2.
 
 This package requires the python packages to run
 
 * `numpy <https://pypi.org/project/numpy>`_
-* `h5py <https://pypi.org/project/h5py>`_ >= 3.3
-* `setuptools <https://pypi.org/project/setuptools>`_
+* `h5py <https://pypi.org/project/h5py>`_ >= 3.9
+* `poetry <https://python-poetry.org/>`_
 
-Note that support for `h5py <https://pypi.org/project/h5py>`_ 2.1 to 3.2.x
+Note that support for `h5py`_ 2.1 to 3.8.x
 has been dropped in version 0.2.
 This package also has the following optional dependencies
 
@@ -55,30 +55,25 @@ Installing from Source
 ----------------------
 
 To install hdf5storage from source,
-`setuptools <https://pypi.org/project/setuptools>`_ >= 61.0.0 is required.
-Download this package and then install the dependencies ::
-
-    pip install -r requirements.txt
-
-Then to install the package, run either ::
+`poetry`_ is required.
+Download this package and then run ::
 
     pip install .
-
 
 Running Tests
 -------------
 
 For testing, the package `pytest <https://pypi.org/project/pytest>`_
-(>= 6.0) is additionally required. There are some tests that require
-Matlab and `scipy <https://pypi.org/project/scipy>`_ to be installed
+(>= 8.3) is additionally required. There are some tests that require
+Matlab and `scipy`_ to be installed
 and be in the executable path respectively. In addition, there are some
 tests that require `Julia <http://julialang.org/>`_ with the
 `MAT <https://github.com/simonster/MAT.jl>`_ package. Not having them
 means that those tests cannot be run (they will be skipped) but all
 the other tests will run. To install all testing dependencies, other
-than `scipy <https://pypi.org/project/scipy>`_, Julia, Matlab run ::
+than `scipy`_, Julia, Matlab run ::
 
-    pip install -r requirements_tests.txt.
+    pip install -r <(poetry export -E tests)
 
 To run the tests ::
 
@@ -90,12 +85,12 @@ Building Documentation
 
 The documentation additionally requires the following packages
 
-* `sphinx <https://pypi.org/project/sphinx>`_ >= 1.7
-* `sphinx_rtd_theme <https://pypi.org/project/sphinx-rtd-theme>`_
+* `sphinx <https://pypi.org/project/sphinx>`_ >= 8.0
+* `sphinx_rtd_theme <https://pypi.org/project/sphinx-rtd-theme>`_ >= 3.0
 
 The documentation dependencies can be installed by ::
 
-    pip install -r requirements_doc.txt
+    pip install -r <(poetry export -E docs)
 
 To build the HTML documentation, run either ::
 
@@ -105,7 +100,7 @@ To build the HTML documentation, run either ::
 Development
 ===========
 
-All Python code is formatted using `black <https://pypi.org/project/black>`_.
+All Python code is formatted using `ruff <https://pypi.org/project/ruff>`_.
 Releases and Pull Requests should pass all unit tests, and ideally pass type
 checking and have no warnings found by linting.
 
@@ -115,7 +110,7 @@ Type Checking
 
 This package now has type annotations since version 0.2, which can be checked
 with a type checker like `mypy <https://pypi.org/project/mypy>`_. To check with
-`mypy <https://pypi.org/project/mypy>`_, run ::
+`mypy`_, run ::
 
     mypy -p hdf5storage
 
@@ -125,16 +120,11 @@ Linting
 
 This package has the configuration in ``pyproject.toml`` for linting with
 
-* `ruff <https://pypi.org/project/ruff>`_
-* `pylint <https://pypi.org/project/pylint>`_
+* `ruff`_
 
-To lint with `ruff <https://pypi.org/project/ruff>`_, run ::
+To lint with `ruff`_, run ::
 
     ruff .
-
-To lint with `pylint <https://pypi.org/project/pylint>`_, run ::
-
-    pylint src/*/*.py
 
 
 Python 2
@@ -420,7 +410,7 @@ Versions
      * The entire configuration is now put in the ``pyproject.toml`` files
        (PEP 621) and the ``setup.py`` file has been removed.
      * Changed all ``IOError`` to ``OSError``.
-     * Added a file object class :py:class:`hdf5storage.File` for
+     * Added a file object class ``hdf5storage.File`` for
        opening a file and doing multiple read and/or write calls on the
        same file.
      * ``reads``, ``read``, and ``loadmat`` now raise a ``KeyError`` if
@@ -538,7 +528,7 @@ Versions
      * Issue #55. Major performance increases by reducing the overhead
        involved with reading and writing each Dataset and Group.
      * Issue #96. Changed unit testing to use
-       `pytest <https://pypi.org/project/pytest>`_ instead of
+       `pytest`_ instead of
        `nose <https://pypi.org/project/nose>`_.
      * Issue #113. Removed the ``get_attribute``, ``get_attribute_string``,
        ``get_attribute_string_array``, ``set_attribute``,
@@ -550,7 +540,7 @@ Versions
        ``convert_to_numpy_bytes`` in the ``utilities`` module have been changed
        to raise ``TypeError`` when given types that cannot be converted.
      * Issue #118. Added type hints and configuration for
-       `mypy <https://pypi.org/project/mypy>`_
+       `mypy`_
 
 0.1.19. Bugfix release.
         * Issue #122 and #124. Replaced use of deprecated ``numpy.asscalar``
