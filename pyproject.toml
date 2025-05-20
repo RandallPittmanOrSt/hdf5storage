@@ -26,6 +26,7 @@ dependencies = ["numpy >= 1.26", "h5py >= 3.9"]
 docs = ["sphinx >= 8.0", "sphinx_rtd_theme >= 3.0"]
 scipy = ["scipy >= 1.14.0"]
 tests = ["pytest >= 8.3", "ruff >= 0.9", "deptry >= 0.23.0"]
+typechecking = ["mypy (>=1.15.0,<1.16.0)"]  # pin mypy to a minor version for consistency
 
 
 [tool.deptry]
