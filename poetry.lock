@@ -543,6 +543,25 @@ files = [
 ]
 
 [[package]]
+name = "optype"
+version = "0.9.3"
+description = "Building blocks for precise & flexible type hints"
+optional = true
+python-versions = ">=3.10"
+groups = ["main"]
+markers = "extra == \"typechecking\""
+files = [
+    {file = "optype-0.9.3-py3-none-any.whl", hash = "sha256:2935c033265938d66cc4198b0aca865572e635094e60e6e79522852f029d9e8d"},
+    {file = "optype-0.9.3.tar.gz", hash = "sha256:5f09d74127d316053b26971ce441a4df01f3a01943601d3712dd6f34cdfbaf48"},
+]
+
+[package.dependencies]
+typing-extensions = {version = ">=4.10", markers = "python_version < \"3.13\""}
+
+[package.extras]
+numpy = ["numpy (>=1.23.5)"]
+
+[[package]]
 name = "packaging"
 version = "25.0"
 description = "Core utilities for Python packages"
@@ -745,6 +764,25 @@ numpy = ">=1.23.5,<2.5"
 dev = ["cython-lint (>=0.12.2)", "doit (>=0.36.0)", "mypy (==1.10.0)", "pycodestyle", "pydevtool", "rich-click", "ruff (>=0.0.292)", "types-psutil", "typing_extensions"]
 doc = ["intersphinx_registry", "jupyterlite-pyodide-kernel", "jupyterlite-sphinx (>=0.16.5)", "jupytext", "matplotlib (>=3.5)", "myst-nb", "numpydoc", "pooch", "pydata-sphinx-theme (>=0.15.2)", "sphinx (>=5.0.0,<8.0.0)", "sphinx-copybutton", "sphinx-design (>=0.4.0)"]
 test = ["Cython", "array-api-strict (>=2.0,<2.1.1)", "asv", "gmpy2", "hypothesis (>=6.30)", "meson", "mpmath", "ninja ; sys_platform != \"emscripten\"", "pooch", "pytest", "pytest-cov", "pytest-timeout", "pytest-xdist", "scikit-umfpack", "threadpoolctl"]
+
+[[package]]
+name = "scipy-stubs"
+version = "1.15.3.0"
+description = "Type annotations for SciPy"
+optional = true
+python-versions = ">=3.10"
+groups = ["main"]
+markers = "extra == \"typechecking\""
+files = [
+    {file = "scipy_stubs-1.15.3.0-py3-none-any.whl", hash = "sha256:a251254cf4fd6e7fb87c55c1feee92d32ddbc1f542ecdf6a0159cdb81c2fb62d"},
+    {file = "scipy_stubs-1.15.3.0.tar.gz", hash = "sha256:e8f76c9887461cf9424c1e2ad78ea5dac71dd4cbb383dc85f91adfe8f74d1e17"},
+]
+
+[package.dependencies]
+optype = ">=0.9.3"
+
+[package.extras]
+scipy = ["scipy (>=1.15.3,<1.16)"]
 
 [[package]]
 name = "setuptools"
@@ -1056,9 +1094,9 @@ zstd = ["zstandard (>=0.18.0)"]
 docs = ["sphinx", "sphinx_rtd_theme"]
 scipy = ["scipy"]
 tests = ["deptry", "pytest", "ruff"]
-typechecking = ["mypy"]
+typechecking = ["mypy", "scipy-stubs"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "5c89059e50aa168bbaa760778b86336fdffb534d0f3b12e8137759108ef6dc6d"
+content-hash = "2b099dd793ca291b5d8f19fccf4bc5efd9654cfacbc796e84796bf1e92a5be0f"
