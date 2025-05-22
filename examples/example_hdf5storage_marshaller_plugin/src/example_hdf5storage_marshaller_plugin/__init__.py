@@ -30,7 +30,7 @@ This is an example package for providing hdf5storage plugins.
 
 __version__ = "0.2"
 
-import hdf5storage.Marshallers as hm
+import hdf5storage.marshallers as hm
 
 # Going to make a class that subclasses lists but doesn't really do
 # anything else, but it will be enought to need a new marshaller.
