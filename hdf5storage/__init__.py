@@ -208,7 +208,7 @@ class Options:
         compressed_fletcher32_filter: bool = True,
         uncompressed_fletcher32_filter: bool = False,
         marshaller_collection: Optional["MarshallerCollection"] = None,
-        **keywords: dict,  # noqa: ARG002
+        **keywords,
     ) -> None:
         # Set the defaults.
 
@@ -1607,7 +1607,7 @@ class File(collections.abc.MutableMapping):
         truncate_existing: bool = False,
         truncate_invalid_matlab: bool = False,
         options: Options | None = None,
-        **keywords: dict,
+        **keywords,
     ) -> None:
         # Before we do anything else, we need to make the attributes for
         # the file handle, the options, and a lock. This way, these
@@ -2214,7 +2214,7 @@ class File(collections.abc.MutableMapping):
             del self._file[posixpath.join(groupname, targetname)]
 
 
-def writes(mdict: Mapping[pathesc.Path, object], **keywords: dict) -> None:
+def writes(mdict: Mapping[pathesc.Path, object], **keywords) -> None:
     """Write data into an HDF5 file.
 
     Wrapper around ``File`` and ``File.writes``. Specifically, this
@@ -2260,7 +2260,7 @@ def writes(mdict: Mapping[pathesc.Path, object], **keywords: dict) -> None:
         f.writes(mdict)
 
 
-def write(data: object, path: pathesc.Path = "/", **keywords: dict) -> None:
+def write(data: object, path: pathesc.Path = "/", **keywords) -> None:
     """Write one piece of data into an HDF5 file.
 
     Wrapper around ``File`` and ``File.write``. Specifically, this
@@ -2307,7 +2307,7 @@ def write(data: object, path: pathesc.Path = "/", **keywords: dict) -> None:
         f.write(data, path)
 
 
-def reads(paths: Iterable[pathesc.Path], **keywords: dict) -> list[object]:
+def reads(paths: Iterable[pathesc.Path], **keywords) -> list[object]:
     """Read pieces of data from an HDF5 file.
 
     Wrapper around ``File`` and ``File.reads`` with the exception that
@@ -2365,7 +2365,7 @@ def reads(paths: Iterable[pathesc.Path], **keywords: dict) -> list[object]:
         return f.reads(paths)
 
 
-def read(path: pathesc.Path = "/", **keywords: dict) -> object:
+def read(path: pathesc.Path = "/", **keywords) -> object:
     """Read one piece of data from an HDF5 file.
 
     Wrapper around ``File`` and ``File.reads`` with the exception that
@@ -2434,7 +2434,7 @@ def savemat(  # noqa: PLR0913
     marshaller_collection: MarshallerCollection | None = None,
     truncate_existing: bool = False,
     truncate_invalid_matlab: bool = False,
-    **keywords: dict,
+    **keywords,
 ) -> None:
     """Save a dictionary of python objects to a MATLAB MAT file.
 
@@ -2566,7 +2566,7 @@ def loadmat(  # noqa: C901, PLR0912, PLR0913
     variable_names: Sequence[pathesc.Path] | None = None,
     marshaller_collection: MarshallerCollection | None = None,
     options: Options | None = None,
-    **keywords: dict,
+    **keywords,
 ) -> dict[Any, Any]:
     """Load data from a MATLAB MAT file.
 
@@ -2725,7 +2725,7 @@ def get_default_marshaller_collection() -> MarshallerCollection:
     return _default_marshaller_collection[0]
 
 
-def make_new_default_marshaller_collection(*args: tuple, **keywords: dict) -> None:
+def make_new_default_marshaller_collection(*args, **keywords) -> None:
     """Make a new default MarshallerCollection.
 
     Replaces the current default ``MarshallerCollection`` with a new
