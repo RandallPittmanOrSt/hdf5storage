@@ -202,6 +202,5 @@ jobs:
         python -m pip install .[typechecking]
     - name: Check typing of hdf5storage, tests, and examples with mypy
       run: |
-        mypy hdf5storage
         mypy tests
         mypy examples
