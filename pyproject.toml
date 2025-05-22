@@ -128,6 +128,9 @@ lint.unfixable = [
 [tool.ruff.lint.pydocstyle]
 convention = "numpy" # Accepts: "google", "numpy", or "pep257".
 
+[[tool.mypy.overrides]]
+module = ["h5py"]
+ignore_missing_imports = true
 
 [build-system]
 requires = ["poetry-core"]
