@@ -1816,7 +1816,7 @@ class File(collections.abc.MutableMapping):
         """
         self.writes({path: data})
 
-    def writes(self: "File", mdict: Mapping[pathesc.Path, Any]) -> None:
+    def writes(self: "File", mdict: Mapping[pathesc.PathT, Any]) -> None:
         """Write one or more pieces of data to the file.
 
         Stores one or more python objects in `mdict` to the specified
@@ -2214,7 +2214,7 @@ class File(collections.abc.MutableMapping):
             del self._file[posixpath.join(groupname, targetname)]
 
 
-def writes(mdict: Mapping[pathesc.Path, object], **keywords) -> None:
+def writes(mdict: Mapping[pathesc.PathT, object], **keywords) -> None:
     """Write data into an HDF5 file.
 
     Wrapper around ``File`` and ``File.writes``. Specifically, this
@@ -2425,7 +2425,7 @@ def read(path: pathesc.Path = "/", **keywords) -> object:
 
 def savemat(  # noqa: PLR0913
     file_name: str | Path,
-    mdict: Mapping[pathesc.Path, Any],
+    mdict: Mapping[pathesc.PathT, Any],
     appendmat: bool = True,
     fmt: MatfileFormat = "7.3",
     oned_as: OnedAs = "row",
