@@ -2040,7 +2040,7 @@ class File(collections.abc.MutableMapping):
                 return length - 1
             return length
 
-    def __contains__(self: "File", path: pathesc.Path) -> bool:
+    def __contains__(self: "File", path: pathesc.Path) -> bool:  # type: ignore[override]
         """Check if an object exists at the specified `path`.
 
         Parameters
