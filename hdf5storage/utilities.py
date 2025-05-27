@@ -39,7 +39,7 @@ import copy
 import posixpath
 import random
 import sys
-from collections.abc import MutableMapping
+from collections.abc import Iterable, MutableMapping
 from typing import Any, TypeGuard, TypeVar
 
 import h5py
@@ -1317,7 +1317,7 @@ def convert_attribute_to_string(value: object) -> str | None:
     return None
 
 
-def convert_attribute_to_string_array(value: object) -> list[str] | None:
+def convert_attribute_to_string_array(value: Iterable[Any] | None) -> list[str] | None:
     """Convert an Attribute value to a string array.
 
     Converts the value of an Attribute to a string array if possible
