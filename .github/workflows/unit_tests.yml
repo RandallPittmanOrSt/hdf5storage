@@ -3,7 +3,7 @@ name: Unit tests and lint checks
 on:
   push:
     branches:
-      - main
+      - typing_ci_test
     paths-ignore:
       - 'docs/**'
       - 'MANIFEST.in'
@@ -12,9 +12,6 @@ on:
       - 'COPYING.txt'
       - '.gitignore'
       - '.gitattributes'
-  pull_request:
-    branches:
-      - main
 
 jobs:
   tests:
@@ -171,7 +168,7 @@ jobs:
   typechecking:
     strategy:
       matrix:
-        include: 
+        include:
           - os: 'ubuntu-24.04'
             python-version: '3.10'
             numpy-version: '<2.0'
