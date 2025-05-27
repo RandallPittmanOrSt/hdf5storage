@@ -2659,6 +2659,7 @@ def loadmat(  # noqa: C901, PLR0912, PLR0913
 
         # Append .mat if it isn't on the end of the file name and we are
         # supposed to.
+        filename: str | Path
         if appendmat:
             if isinstance(file_name, str) and not file_name.endswith(".mat"):
                 filename = file_name + ".mat"
