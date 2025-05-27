@@ -996,7 +996,7 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
 def convert_to_numpy_bytes(  # noqa: C901, PLR0911, PLR0912
     data: str | bytes | bytearray | np.unsignedinteger | np.bytes_ | np.str_ | np.ndarray,
     length: int | None = None,
-) -> np.ndarray | np.bytes_:
+) -> npt.NDArray[np.bytes_] | np.bytes_:
     r"""Decode data to Numpy UTF-8 econded string (``numpy.bytes_``).
 
     Decodes `data` to a Numpy UTF-8 encoded string, which is
@@ -1050,37 +1050,39 @@ def convert_to_numpy_bytes(  # noqa: C901, PLR0911, PLR0912
 
     """
     # The method of conversion depends on its type.
-    if isinstance(
-        data,
-        np.ndarray | np.uint8 | np.uint16 | np.uint32 | np.bytes_ | np.str_,
-    ):
-        if data.dtype.type == np.bytes_:
+    # Handle scalars first
+    if isinstance(data, np.bytes_):
+        return data
+    if isinstance(data, np.uint16 | np.uint32):  # type: ignore[arg-type]  # These are real types, but type-checkers can't tell.
+        # They are single UTF-16 or UTF-32 scalars, and are easily
+        # converted to a UTF-8 string and then passed through the
+        # constructor.
+        return np.bytes_(convert_to_str(data).encode("UTF-8"))
+    if isinstance(data, np.uint8):  # type: ignore[arg-type]  # This is a real type, but type-checkers can't tell.
+        # It is just the uint8 version of the character, so it just
+        # needs to be have the dtype essentially changed by having
+        # its bytes read into ndarray.
+        return np.ndarray(shape=(), dtype="S1", buffer=data.data)[()]
+    if isinstance(data, np.str_):
+        return np.bytes_(data.encode("UTF-8"))
+    if isinstance(data, bytes | bytearray):
+        # Easily converted through constructor.
+        return np.bytes_(data)
+    if isinstance(data, str):
+        return np.bytes_(data.encode("UTF-8"))
+    # Handle arrays
+    if isinstance(data, np.ndarray):
+        if ndarray_has_type(data, np.bytes_):
             # It is already an np.bytes_ or array of them, so nothing
             # needs to be done.
             return data
-        if isinstance(data, np.uint16 | np.uint32):
-            # They are single UTF-16 or UTF-32 scalars, and are easily
-            # converted to a UTF-8 string and then passed through the
-            # constructor.
-            return np.bytes_(convert_to_str(data).encode("UTF-8"))
-        if isinstance(data, np.uint8):
-            # It is just the uint8 version of the character, so it just
-            # needs to be have the dtype essentially changed by having
-            # its bytes read into ndarray.
-            return np.ndarray(shape=(), dtype="S1", buffer=data.data)[()]
-        if isinstance(data, np.str_):
-            return np.bytes_(data.encode("UTF-8"))
-        if isinstance(data, np.ndarray) and data.dtype.char == "U":
+        if ndarray_has_type(data, np.str_):
             # We just need to convert it elementwise.
             new_data = np.zeros(shape=data.shape, dtype="S" + str(data.dtype.itemsize))
             for index, x in np.ndenumerate(data):
                 new_data[index] = np.bytes_(x.encode("UTF-8"))
             return new_data
-        if isinstance(data, np.ndarray) and data.dtype.name in {
-            "uint8",
-            "uint16",
-            "uint32",
-        }:
+        if ndarray_has_type(data, np.uint8) or ndarray_has_type(data, np.uint16) or ndarray_has_type(data, np.uint32):
             # It is an ndarray of some uint type. How it is converted
             # depends on its shape. If its shape is just (), then it is
             # just a scalar wrapped in an array, which can be converted
@@ -1113,7 +1115,7 @@ def convert_to_numpy_bytes(  # noqa: C901, PLR0911, PLR0912
 
             # If it is uint8, we can just use the object directly as the
             # buffer for the new data.
-            if data.dtype.name == "uint8":
+            if ndarray_has_type(data, np.uint8):
                 return np.ndarray(
                     shape=new_shape,
                     dtype="S" + str(length2),
@@ -1140,14 +1142,9 @@ def convert_to_numpy_bytes(  # noqa: C901, PLR0911, PLR0912
 
             # Only thing is left is to reshape it.
             return new_data.reshape(tuple(new_shape))
-        msg = "Not a type that can be converted to str."
+        msg = "The array is not a type that can be converted to an array of bytes."
         raise TypeError(msg)
-    if isinstance(data, bytes | bytearray):
-        # Easily converted through constructor.
-        return np.bytes_(data)
-    if isinstance(data, str):
-        return np.bytes_(data.encode("UTF-8"))
-    msg = "Not a type that can be converted to str."
+    msg = "Not a type that can be converted to bytes."
     raise TypeError(msg)
 
 
