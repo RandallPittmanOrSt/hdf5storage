@@ -2040,7 +2040,7 @@ class File(collections.abc.MutableMapping):
                 return length - 1
             return length
 
-    def __contains__(self: "File", path: pathesc.Path) -> bool:
+    def __contains__(self: "File", path: pathesc.Path) -> bool:  # type: ignore[override]
         """Check if an object exists at the specified `path`.
 
         Parameters
@@ -2535,8 +2535,6 @@ def savemat(  # noqa: PLR0913
     if appendmat:
         if isinstance(file_name, str) and not file_name.endswith(".mat"):
             file_name = file_name + ".mat"
-        elif isinstance(file_name, bytes) and not file_name.endswith(b".mat"):
-            file_name = file_name + b".mat"
         elif isinstance(file_name, Path) and file_name.suffix != ".mat":
             file_name = file_name.parent / (file_name.stem + ".mat")
 
@@ -2661,11 +2659,10 @@ def loadmat(  # noqa: C901, PLR0912, PLR0913
 
         # Append .mat if it isn't on the end of the file name and we are
         # supposed to.
+        filename: str | Path
         if appendmat:
             if isinstance(file_name, str) and not file_name.endswith(".mat"):
                 filename = file_name + ".mat"
-            elif isinstance(file_name, bytes) and not file_name.endswith(b".mat"):
-                filename = file_name + b".mat"
             elif isinstance(file_name, Path) and file_name.suffix != ".mat":
                 filename = file_name.parent / (file_name.stem + ".mat")
             else:
