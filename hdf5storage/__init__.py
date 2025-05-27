@@ -2535,8 +2535,6 @@ def savemat(  # noqa: PLR0913
     if appendmat:
         if isinstance(file_name, str) and not file_name.endswith(".mat"):
             file_name = file_name + ".mat"
-        elif isinstance(file_name, bytes) and not file_name.endswith(b".mat"):
-            file_name = file_name + b".mat"
         elif isinstance(file_name, Path) and file_name.suffix != ".mat":
             file_name = file_name.parent / (file_name.stem + ".mat")
 
@@ -2664,8 +2662,6 @@ def loadmat(  # noqa: C901, PLR0912, PLR0913
         if appendmat:
             if isinstance(file_name, str) and not file_name.endswith(".mat"):
                 filename = file_name + ".mat"
-            elif isinstance(file_name, bytes) and not file_name.endswith(b".mat"):
-                filename = file_name + b".mat"
             elif isinstance(file_name, Path) and file_name.suffix != ".mat":
                 filename = file_name.parent / (file_name.stem + ".mat")
             else:
