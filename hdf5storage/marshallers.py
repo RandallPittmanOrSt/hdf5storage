@@ -502,7 +502,8 @@ class TypeMarshaller:
         hdf5storage.utilities.LowLevelFile.read_data
 
         """
-        raise NotImplementedError("Can't read data: " + dsetgrp.name)
+        msg = f"Can't read data: {dsetgrp.name}"
+        raise NotImplementedError(msg)
 
     def read_approximate(
         self: "TypeMarshaller",
@@ -555,7 +556,8 @@ class TypeMarshaller:
         hdf5storage.utilities.LowLevelFile.read_data
 
         """
-        raise NotImplementedError("Can't read data: " + dsetgrp.name)
+        msg = f"Can't read data: {dsetgrp.name}"
+        raise NotImplementedError(msg)
 
 
 class NumpyScalarArrayMarshaller(TypeMarshaller):
