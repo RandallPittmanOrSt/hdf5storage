@@ -1609,8 +1609,12 @@ class PythonScalarMarshaller(NumpyScalarArrayMarshaller):
         # returned as an ndarray, we need to use its item method.
         type_string = convert_attribute_to_string(attributes["Python.Type"])
         if type_string in self.typestring_to_type:
+            if isinstance(data, dict) or sum(data.shape) > 1:
+                msg = "The dataset is not a scalar."
+                raise hdf5storage.exceptions.Hdf5storageError(msg)
             tp = self.typestring_to_type[type_string]
-            return tp(data.item())  # type: ignore[operator]
+            assert isinstance(tp, type)  # noqa: S101  # we know this from self.types
+            return tp(data.item())
         # Must be some other type, so return it as is.
         return data
 
