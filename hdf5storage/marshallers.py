@@ -1998,10 +1998,7 @@ class PythonDictMarshaller(TypeMarshaller):
             # then does nothing about them (nothing needs to be
             # done). Field names optionally need to be converted to
             # their original string types.
-            tp_convert: dict[
-                str,
-                Callable[[str], str | bytes | np.str_ | np.bytes_],
-            ] = {
+            tp_convert: dict[str, Callable] = {
                 "t": lambda x: x,
                 "b": lambda x: bytes(convert_to_numpy_bytes(x)),
                 "S": convert_to_numpy_bytes,
