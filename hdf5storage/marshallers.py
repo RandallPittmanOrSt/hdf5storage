@@ -1060,11 +1060,11 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
                 f.options.structured_numpy_ndarray_as_struct
                 or (has_obj or has_null)
                 or not all(data.shape)
-                or not all(all(data[n].shape) for n in data.dtype.names)
+                or not all(all(data[n].shape) for n in data.dtype.names)  # type: ignore[arg-type,index,union-attr]  # we know it's a struct array
             )
         ):
             # Grab the list of fields and escape them.
-            field_names = [escape_path(c) for c in data.dtype.names]
+            field_names = [escape_path(c) for c in data.dtype.names]  # type: ignore[union-attr]  # we know it's a struct array
 
             # Write or delete 'Python.Fields' as appropriate.
             if f.options.store_python_metadata:
@@ -1212,7 +1212,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
                 ):
                     is_multi_element = False
                 with contextlib.suppress(Exception):
-                    struct_data[unescaped_k] = f.read_data(dset, k)
+                    struct_data[unescaped_k] = f.read_data(dset, k)  # type: ignore[assignment]  # this should be fine
 
             if matlab_class == "struct" and f.options.structs_as_dicts:
                 return struct_data
