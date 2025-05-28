@@ -13,6 +13,9 @@ def ndarray_has_type(data: np.ndarray, type_: type[_ScalarType_co]) -> TypeGuard
     return np.issubdtype(data.dtype, type_)
 
 
-def is_ndarray_of_type(data: Any, type_: type[_ScalarType_co]) -> TypeGuard[npt.NDArray[_ScalarType_co]]:
+def is_ndarray_of_type(
+    data: Any,  # noqa: ANN401
+    type_: type[_ScalarType_co],
+) -> TypeGuard[npt.NDArray[_ScalarType_co]]:
     """Confirm that data is a numpy array of some type."""
     return isinstance(data, np.ndarray) and ndarray_has_type(data, type_)

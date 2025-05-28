@@ -38,6 +38,7 @@ from typing import Any
 
 import h5py
 import numpy as np
+import numpy.typing as npt
 
 import hdf5storage.exceptions
 
@@ -850,6 +851,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         ):
             wrote_as_struct = True
             # Grab the list of fields and properly escape them.
+            assert data_to_store.dtype.names is not None  # noqa: S101  # it's a structured array
             field_names = list(data_to_store.dtype.names)
             escaped_field_names = [escape_path(n) for n in field_names]
 
@@ -1008,6 +1010,11 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # matlab struct or not. If yes, then the field names must be put
         # in the metadata.
 
+        # data must be a numpy array or scalar. This also narrows for static type checking.
+        if not isinstance(data, np.ndarray | np.generic):
+            msg = "data must be a NumPy array or scalar."
+            raise TypeError(msg)
+
         if attributes is None:
             attributes = {}
         # Write the underlying numpy type if we are storing python
@@ -1018,7 +1025,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # 'matrix', or 'chararray') need to be stored.
 
         if f.options.store_python_metadata:
-            attributes["Python.Shape"] = ("value", np.uint64(data.shape))
+            attributes["Python.Shape"] = ("value", np.ndarray(data.shape, dtype=np.uint64))
 
             # Now, in Python 3, the dtype names for bare bytes and
             # unicode strings start with 'bytes' and 'str' respectively,
@@ -1054,11 +1061,11 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
                 f.options.structured_numpy_ndarray_as_struct
                 or (has_obj or has_null)
                 or not all(data.shape)
-                or not all(all(data[n].shape) for n in data.dtype.names)
+                or not all(all(data[n].shape) for n in data.dtype.names)  # type: ignore[arg-type,index,union-attr]  # we know it's a struct array
             )
         ):
             # Grab the list of fields and escape them.
-            field_names = [escape_path(c) for c in data.dtype.names]
+            field_names = [escape_path(c) for c in data.dtype.names]  # type: ignore[union-attr]  # we know it's a struct array
 
             # Write or delete 'Python.Fields' as appropriate.
             if f.options.store_python_metadata:
@@ -1132,7 +1139,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         f: "hdf5storage.utilities.LowLevelFile",
         dsetgrp: h5py.Dataset | h5py.Group,
         attributes: collections.defaultdict,
-    ) -> object:
+    ) -> np.ndarray | np.generic | dict[str, np.ndarray | np.generic]:
         dset = dsetgrp
 
         # Get the different attributes this marshaller uses.
@@ -1184,7 +1191,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
             # ndarray). In Python 2, the field names need to be
             # converted to str from unicode when storing the fields in
             # struct_data.
-            struct_data = {}
+            struct_data: dict[str, np.ndarray | np.generic] = {}
             is_multi_element = True
             for k, fld in dset.items():
                 # Unescape the name.
@@ -1206,7 +1213,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
                 ):
                     is_multi_element = False
                 with contextlib.suppress(Exception):
-                    struct_data[unescaped_k] = f.read_data(dset, k)
+                    struct_data[unescaped_k] = f.read_data(dset, k)  # type: ignore[assignment]  # this should be fine
 
             if matlab_class == "struct" and f.options.structs_as_dicts:
                 return struct_data
@@ -1239,7 +1246,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
             else:
                 fields = sorted(struct_data)
 
-            dt_whole: list[tuple[str, str] | tuple[str, str, Sequence[int]]] = []
+            dt_whole: list[tuple[str, npt.DTypeLike] | tuple[str, npt.DTypeLike, Sequence[int]]] = []
             for k in fields:
                 # Read the value.
                 v = struct_data[k]
@@ -1503,6 +1510,9 @@ class NumpyDtypeMarshaller(NumpyScalarArrayMarshaller):
         #
         # As for the conversion, we just use convert_dtype_to_str to
         # convert it.
+        if not isinstance(data, np.dtype):
+            msg = "data must be a numpy.dtype."
+            raise TypeError(msg)
         return NumpyScalarArrayMarshaller.write(
             self,
             f,
