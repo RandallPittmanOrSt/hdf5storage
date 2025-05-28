@@ -557,6 +557,8 @@ class TypeMarshaller:
 
 
 class NumpyScalarArrayMarshaller(TypeMarshaller):
+    """Marshaller for NumPy scalars and arrays."""
+
     def __init__(self) -> None:
         TypeMarshaller.__init__(self)
         self.python_attributes |= {
@@ -701,6 +703,10 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
     ) -> h5py.Dataset | h5py.Group | None:
         # Start with an emtpy attributes.
         attributes = {}
+        # data must be a numpy array or scalar. This also narrows for static type checking.
+        if not isinstance(data, np.ndarray | np.generic):
+            msg = "data must be a NumPy array or scalar."
+            raise TypeError(msg)
         # If we are doing matlab compatibility and the data type is not
         # one of those that is supported for matlab, skip writing the
         # data or throw an error if appropriate. structured ndarrays and
