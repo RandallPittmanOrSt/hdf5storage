@@ -38,6 +38,7 @@ from typing import Any
 
 import h5py
 import numpy as np
+import numpy.typing as npt
 
 import hdf5storage.exceptions
 
@@ -1245,7 +1246,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
             else:
                 fields = sorted(struct_data)
 
-            dt_whole: list[tuple[str, str] | tuple[str, str, Sequence[int]]] = []
+            dt_whole: list[tuple[str, npt.DTypeLike] | tuple[str, npt.DTypeLike, Sequence[int]]] = []
             for k in fields:
                 # Read the value.
                 v = struct_data[k]
