@@ -42,6 +42,7 @@ import numpy as np
 import hdf5storage.exceptions
 
 from .pathesc import escape_path, unescape_path
+from .typing import is_ndarray_of_type
 from .utilities import (
     convert_attribute_to_string,
     convert_attribute_to_string_array,
@@ -759,6 +760,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # converted to uint32's byte for byte instead.
 
         if data.dtype.type == np.str_:
+            assert isinstance(data_to_store, np.str_) or is_ndarray_of_type(data_to_store, np.str_)  # noqa: S101
             new_data2 = None
             if f.options.convert_numpy_str_to_utf16:
                 with contextlib.suppress(Exception):
@@ -809,6 +811,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # If it is a complex type, then it needs to be encoded to have
         # the proper complex field names.
         if np.iscomplexobj(data_to_store):
+            assert isinstance(data_to_store, np.ndarray | np.complexfloating)  # noqa: S101
             data_to_store = encode_complex(data_to_store, f.options.complex_names)
 
         # If we are storing an object type and it isn't empty
@@ -816,6 +819,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # write what each element points to and make an array of the
         # references to them.
         if data_to_store.dtype.name == "object":
+            assert isinstance(data_to_store, np.object_) or is_ndarray_of_type(data_to_store, np.object_)  # noqa: S101
             data_to_store = f.write_object_array(data_to_store)
 
         # If it an ndarray with fields and we are writing such things as
