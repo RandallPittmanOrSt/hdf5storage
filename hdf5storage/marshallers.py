@@ -42,6 +42,7 @@ import numpy as np
 import hdf5storage.exceptions
 
 from .pathesc import escape_path, unescape_path
+from .typing import is_ndarray_of_type
 from .utilities import (
     convert_attribute_to_string,
     convert_attribute_to_string_array,
@@ -557,6 +558,8 @@ class TypeMarshaller:
 
 
 class NumpyScalarArrayMarshaller(TypeMarshaller):
+    """Marshaller for NumPy scalars and arrays."""
+
     def __init__(self) -> None:
         TypeMarshaller.__init__(self)
         self.python_attributes |= {
@@ -701,6 +704,10 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
     ) -> h5py.Dataset | h5py.Group | None:
         # Start with an emtpy attributes.
         attributes = {}
+        # data must be a numpy array or scalar. This also narrows for static type checking.
+        if not isinstance(data, np.ndarray | np.generic):
+            msg = "data must be a NumPy array or scalar."
+            raise TypeError(msg)
         # If we are doing matlab compatibility and the data type is not
         # one of those that is supported for matlab, skip writing the
         # data or throw an error if appropriate. structured ndarrays and
@@ -753,6 +760,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # converted to uint32's byte for byte instead.
 
         if data.dtype.type == np.str_:
+            assert isinstance(data_to_store, np.str_) or is_ndarray_of_type(data_to_store, np.str_)  # noqa: S101
             new_data2 = None
             if f.options.convert_numpy_str_to_utf16:
                 with contextlib.suppress(Exception):
@@ -776,7 +784,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         if f.options.make_atleast_2d:
             new_data3 = np.atleast_2d(data_to_store)
             if len(data_to_store.shape) == 1 and f.options.oned_as == "column":
-                new_data = new_data3.T
+                new_data3 = new_data3.T
             data_to_store = new_data3
 
         # Reverse the dimension order if that option is set.
@@ -786,7 +794,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
 
         # Bools need to be converted to uint8 if the option is given.
         if data_to_store.dtype.name == "bool" and f.options.convert_bools_to_uint8:
-            data_to_store = np.uint8(data_to_store)
+            data_to_store = np.uint8(data_to_store)  # type: ignore[arg-type]
 
         # If data is empty, we instead need to store the shape of the
         # array if the appropriate option is set. The shape should be
@@ -796,13 +804,14 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
             data.size == 0 or (data.dtype.type in (np.bytes_, np.str_) and data.nbytes == 0)
         ):
             if f.options.reverse_dimension_order:
-                data_to_store = np.uint64(data_to_store.shape[::-1])
+                data_to_store = np.uint64(data_to_store.shape[::-1])  # type: ignore[arg-type]  # we're doing something unexpected here.
             else:
-                data_to_store = np.uint64(data_to_store.shape)
+                data_to_store = np.uint64(data_to_store.shape)  # type: ignore[arg-type]  # we're doing something unexpected here.
 
         # If it is a complex type, then it needs to be encoded to have
         # the proper complex field names.
         if np.iscomplexobj(data_to_store):
+            assert isinstance(data_to_store, np.ndarray | np.complexfloating)  # noqa: S101
             data_to_store = encode_complex(data_to_store, f.options.complex_names)
 
         # If we are storing an object type and it isn't empty
@@ -810,6 +819,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # write what each element points to and make an array of the
         # references to them.
         if data_to_store.dtype.name == "object":
+            assert isinstance(data_to_store, np.object_) or is_ndarray_of_type(data_to_store, np.object_)  # noqa: S101
             data_to_store = f.write_object_array(data_to_store)
 
         # If it an ndarray with fields and we are writing such things as
