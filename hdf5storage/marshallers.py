@@ -2265,7 +2265,7 @@ class PythonFractionMarshaller(PythonDictMarshaller):
         # work, and then pass the result through the contructor of
         # Fraction.
         data = PythonDictMarshaller.read(self, f, dsetgrp, attributes)
-        return importlib.import_module("fractions").Fraction(**data)
+        return fractions.Fraction(**data)
 
     def read_approximate(
         self: "PythonFractionMarshaller",
