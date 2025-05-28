@@ -850,6 +850,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         ):
             wrote_as_struct = True
             # Grab the list of fields and properly escape them.
+            assert data_to_store.dtype.names is not None  # noqa: S101  # it's a structured array
             field_names = list(data_to_store.dtype.names)
             escaped_field_names = [escape_path(n) for n in field_names]
 
@@ -1008,6 +1009,11 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # matlab struct or not. If yes, then the field names must be put
         # in the metadata.
 
+        # data must be a numpy array or scalar. This also narrows for static type checking.
+        if not isinstance(data, np.ndarray | np.generic):
+            msg = "data must be a NumPy array or scalar."
+            raise TypeError(msg)
+
         if attributes is None:
             attributes = {}
         # Write the underlying numpy type if we are storing python
@@ -1132,7 +1138,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         f: "hdf5storage.utilities.LowLevelFile",
         dsetgrp: h5py.Dataset | h5py.Group,
         attributes: collections.defaultdict,
-    ) -> object:
+    ) -> np.ndarray | np.generic | dict[str, np.ndarray | np.generic]:
         dset = dsetgrp
 
         # Get the different attributes this marshaller uses.
@@ -1184,7 +1190,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
             # ndarray). In Python 2, the field names need to be
             # converted to str from unicode when storing the fields in
             # struct_data.
-            struct_data = {}
+            struct_data: dict[str, np.ndarray | np.generic] = {}
             is_multi_element = True
             for k, fld in dset.items():
                 # Unescape the name.
@@ -1503,6 +1509,9 @@ class NumpyDtypeMarshaller(NumpyScalarArrayMarshaller):
         #
         # As for the conversion, we just use convert_dtype_to_str to
         # convert it.
+        if not isinstance(data, np.dtype):
+            msg = "data must be a numpy.dtype."
+            raise TypeError(msg)
         return NumpyScalarArrayMarshaller.write(
             self,
             f,
