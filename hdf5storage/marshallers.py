@@ -1529,7 +1529,7 @@ class NumpyDtypeMarshaller(NumpyScalarArrayMarshaller):
         # ast.literal_eval instead of the dangerous eval), and passing
         # to the constructor of dtype.
         data = convert_to_str(
-            NumpyScalarArrayMarshaller.read(self, f, dsetgrp, attributes),
+            NumpyScalarArrayMarshaller.read(self, f, dsetgrp, attributes),  # type: ignore[arg-type]  # we'll assume this is safe to do
         )
         return np.dtype(ast.literal_eval(data))
 
@@ -1668,11 +1668,11 @@ class PythonStringMarshaller(NumpyScalarArrayMarshaller):
         # as is.
         type_string = convert_attribute_to_string(attributes["Python.Type"])
         if type_string == "str":
-            return convert_to_str(data)
+            return convert_to_str(data)  # type: ignore[arg-type]  # allow runtime checking to take care of this.
         if type_string == "bytes":
-            return bytes(data)
+            return bytes(data)  # type: ignore[arg-type]  # allow runtime checking to take care of this.
         if type_string == "bytearray":
-            return bytearray(data)
+            return bytearray(data)  # type: ignore[arg-type]  # allow runtime checking to take care of this.
         return data
 
 
@@ -1969,7 +1969,7 @@ class PythonDictMarshaller(TypeMarshaller):
             and escape_path(keys_values_names[1]) in grp2
         ):
             d = tuple(f.read_data(grp2, escape_path(k)) for k in keys_values_names)
-            items = list(zip(d[0], d[1], strict=False))
+            items = list(zip(d[0], d[1], strict=False))  # type: ignore[call-overload]  # assume keys and values are iterable
         else:
             # Construct the fields to grab and their proper order
             # (important for OrderedDict) from python_fields,
@@ -2326,7 +2326,7 @@ class PythonListMarshaller(NumpyScalarArrayMarshaller):
 
         # Passing it through list does all the work of making it a list
         # again.
-        return list(data)
+        return list(data)  # type: ignore[arg-type]  # assume it can be coerced to a list
 
 
 class PythonTupleSetDequeMarshaller(PythonListMarshaller):
