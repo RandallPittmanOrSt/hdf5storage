@@ -794,7 +794,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
 
         # Bools need to be converted to uint8 if the option is given.
         if data_to_store.dtype.name == "bool" and f.options.convert_bools_to_uint8:
-            data_to_store = np.uint8(data_to_store)
+            data_to_store = np.uint8(data_to_store)  # type: ignore[arg-type]
 
         # If data is empty, we instead need to store the shape of the
         # array if the appropriate option is set. The shape should be
@@ -804,9 +804,9 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
             data.size == 0 or (data.dtype.type in (np.bytes_, np.str_) and data.nbytes == 0)
         ):
             if f.options.reverse_dimension_order:
-                data_to_store = np.uint64(data_to_store.shape[::-1])
+                data_to_store = np.uint64(data_to_store.shape[::-1])  # type: ignore[arg-type]  # we're doing something unexpected here.
             else:
-                data_to_store = np.uint64(data_to_store.shape)
+                data_to_store = np.uint64(data_to_store.shape)  # type: ignore[arg-type]  # we're doing something unexpected here.
 
         # If it is a complex type, then it needs to be encoded to have
         # the proper complex field names.
