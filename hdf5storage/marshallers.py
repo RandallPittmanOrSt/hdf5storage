@@ -784,7 +784,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         if f.options.make_atleast_2d:
             new_data3 = np.atleast_2d(data_to_store)
             if len(data_to_store.shape) == 1 and f.options.oned_as == "column":
-                new_data = new_data3.T
+                new_data3 = new_data3.T
             data_to_store = new_data3
 
         # Reverse the dimension order if that option is set.
