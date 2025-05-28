@@ -40,13 +40,14 @@ import posixpath
 import random
 import sys
 from collections.abc import Iterable, MutableMapping
-from typing import Any, TypeGuard, TypeVar
+from typing import Any
 
 import h5py
 import numpy as np
 import numpy.typing as npt
 
 import hdf5storage.exceptions
+from hdf5storage.typing import ndarray_has_type
 
 
 def does_dtype_have_a_zero_shape(dt: np.dtype) -> bool:
@@ -841,14 +842,6 @@ def convert_to_str(  # noqa: C901, PLR0911
         return data.decode("UTF-8")
     msg = "Not a type that can be converted to str."
     raise TypeError(msg)
-
-
-_ScalarType_co = TypeVar("_ScalarType_co", bound=np.generic, covariant=True)
-
-
-def ndarray_has_type(data: np.ndarray, type_: type[_ScalarType_co]) -> TypeGuard[npt.NDArray[_ScalarType_co]]:
-    """Confirm that a numpy array contains a certain type."""
-    return np.issubdtype(data.dtype, type_)
 
 
 def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
