@@ -374,7 +374,7 @@ class LowLevelFile:
 
     def write_object_array(  # noqa: C901, PLR0912
         self: "LowLevelFile",
-        data: np.ndarray,
+        data: np.ndarray | np.object_,
     ) -> np.ndarray | h5py.Reference:
         """Write an array of objects recursively.
 
