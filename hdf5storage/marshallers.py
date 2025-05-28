@@ -289,7 +289,7 @@ class TypeMarshaller:
 
     def get_type_string(
         self: "TypeMarshaller",
-        data: object,
+        data: Any,  # noqa: ANN401  # narrowed in subclasses
         type_string: str | None,
     ) -> str:
         """Get type string.
@@ -334,7 +334,7 @@ class TypeMarshaller:
         f: "hdf5storage.utilities.LowLevelFile",
         grp: h5py.Group,
         name: str,
-        data: object,
+        data: Any,  # noqa: ANN401  # narrowed in subclasses
         type_string: str | None,
     ) -> h5py.Dataset | h5py.Group | None:
         """Write an object's metadata to file.
@@ -393,7 +393,7 @@ class TypeMarshaller:
         self: "TypeMarshaller",
         f: "hdf5storage.utilities.LowLevelFile",
         dsetgrp: h5py.Dataset | h5py.Group,
-        data: object,
+        data: Any,  # noqa: ANN401  # narrowed in subclasses
         type_string: str | None,
         attributes: dict[str, tuple[str, Any]] | None = None,
     ) -> None:
@@ -456,7 +456,7 @@ class TypeMarshaller:
         f: "hdf5storage.utilities.LowLevelFile",
         dsetgrp: h5py.Dataset | h5py.Group,
         attributes: collections.defaultdict,
-    ) -> object:
+    ) -> Any:  # noqa: ANN401  # narrowed in subclasses
         """Read a Python object from file.
 
         Reads the data at `dsetgrp` and converts it to a Python object
@@ -509,7 +509,7 @@ class TypeMarshaller:
         f: "hdf5storage.utilities.LowLevelFile",
         dsetgrp: h5py.Dataset | h5py.Group,
         attributes: collections.defaultdict,
-    ) -> object:
+    ) -> Any:  # noqa: ANN401  # narrowed in subclasses
         """Read a Python object approximately from file.
 
         Reads the data at `dsetgrp` and returns an approximation of it
