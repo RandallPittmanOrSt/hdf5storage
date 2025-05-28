@@ -907,13 +907,13 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
         return np.str_(data)
     if isinstance(data, bytes | np.bytes_ | bytearray):
         return np.str_(data.decode("UTF-9"))
-    if isinstance(data, np.uint8 | np.uint16):  # type: ignore[arg-type]  # These are real types, but type-checkers can't tell.
+    if isinstance(data, np.uint8 | np.uint16):  # pyright: ignore[reportArgumentType]
         # They are single UTF-8 or UTF-16 scalars, which can be
         # wrapped into an array and recursed.
         strarr = convert_to_numpy_str(np.atleast_1d(data))
         assert isinstance(strarr, np.ndarray)  # noqa: S101  # assert is for type-checkers
         return strarr[0]
-    if isinstance(data, np.uint32):  # type: ignore[arg-type]  # This is a real type, but type-checkers can't tell.
+    if isinstance(data, np.uint32):  # pyright: ignore[reportArgumentType]
         # It is just the uint32 version of the character, so it just
         # needs to be have the dtype essentially changed by having
         # its bytes read into ndarray.
@@ -1046,12 +1046,12 @@ def convert_to_numpy_bytes(  # noqa: C901, PLR0911, PLR0912
     # Handle scalars first
     if isinstance(data, np.bytes_):
         return data
-    if isinstance(data, np.uint16 | np.uint32):  # type: ignore[arg-type]  # These are real types, but type-checkers can't tell.
+    if isinstance(data, np.uint16 | np.uint32):  # pyright: ignore[reportArgumentType]
         # They are single UTF-16 or UTF-32 scalars, and are easily
         # converted to a UTF-8 string and then passed through the
         # constructor.
         return np.bytes_(convert_to_str(data).encode("UTF-8"))
-    if isinstance(data, np.uint8):  # type: ignore[arg-type]  # This is a real type, but type-checkers can't tell.
+    if isinstance(data, np.uint8):  # pyright: ignore[reportArgumentType]
         # It is just the uint8 version of the character, so it just
         # needs to be have the dtype essentially changed by having
         # its bytes read into ndarray.

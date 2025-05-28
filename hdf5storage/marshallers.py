@@ -1060,7 +1060,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
                 f.options.structured_numpy_ndarray_as_struct
                 or (has_obj or has_null)
                 or not all(data.shape)
-                or not all(all(data[n].shape) for n in data.dtype.names)  # type: ignore[arg-type,index,union-attr]  # we know it's a struct array
+                or not all(all(data[n].shape) for n in data.dtype.names)  # type: ignore[index,union-attr]  # we know it's a struct array
             )
         ):
             # Grab the list of fields and escape them.
