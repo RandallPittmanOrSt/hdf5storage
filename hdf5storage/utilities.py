@@ -847,7 +847,7 @@ def convert_to_str(  # noqa: C901, PLR0911
 def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
     data: str | bytes | bytearray | np.unsignedinteger | np.bytes_ | np.str_ | np.ndarray,
     length: int | None = None,
-) -> np.ndarray | np.str_:
+) -> npt.NDArray[np.str_] | np.str_:
     r"""Decode data to Numpy unicode string (``numpy.str_``).
 
     Decodes `data` to Numpy unicode string (UTF-32), which is
