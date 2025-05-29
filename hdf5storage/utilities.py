@@ -923,10 +923,8 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
             # be done.
             return data
         if ndarray_has_type(data, np.bytes_):
-            # R. Pittman edit: Switched from `np.char.decode` to `np.char.encode`
-            # 2025-05-27. Not sure why we assume this is UTF-32, when we assume scalar
-            # bytes are UTF-8.
-            return np.char.decode(data, "UTF-32")
+            # Just decode the bytes as UTF-8
+            return np.char.decode(data, "UTF-8")
         if ndarray_has_type(data, np.uint8) or ndarray_has_type(data, np.uint16) or ndarray_has_type(data, np.uint32):
             # It is an ndarray of some uint type. How it is converted
             # depends on its shape. If its shape is just (), then it is
