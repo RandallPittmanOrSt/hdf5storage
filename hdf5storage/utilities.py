@@ -910,7 +910,7 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
     if isinstance(data, np.uint8 | np.uint16):  # pyright: ignore[reportArgumentType]
         # They are single UTF-8 or UTF-16 scalars, which can be
         # wrapped into an array and recursed.
-        return convert_to_numpy_str(np.atleast_1d(data))[0]  # type: ignore[return-type]  # this will be a np.str_
+        return convert_to_numpy_str(np.atleast_1d(data))[0]  # type: ignore[return-value]  # this will be a np.str_
     if isinstance(data, np.uint32):  # pyright: ignore[reportArgumentType]
         # It is just the uint32 version of the character, so it just
         # needs to be have the dtype essentially changed by having
