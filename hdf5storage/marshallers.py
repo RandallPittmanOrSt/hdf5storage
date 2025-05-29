@@ -1513,7 +1513,7 @@ class NumpyDtypeMarshaller(NumpyScalarArrayMarshaller):
             "numpy.dtype",
         )
 
-    def read(  # type: ignore[override]  # we allow return of dtype though not compatible with super().read() return type.
+    def read(  # type: ignore[override]  # return type is different from superclass return type
         self,
         f: "hdf5storage.utilities.LowLevelFile",
         dsetgrp: h5py.Dataset | h5py.Group,
@@ -2250,7 +2250,7 @@ class PythonFractionMarshaller(PythonDictMarshaller):
             self.get_type_string(data, type_string),
         )
 
-    def read(  # type: ignore[override]  # we allow return of Fraction though not compatible with super().read() return type.
+    def read(  # type: ignore[override]  # return type is different from superclass return type
         self: "PythonFractionMarshaller",
         f: "hdf5storage.utilities.LowLevelFile",
         dsetgrp: h5py.Dataset | h5py.Group,
@@ -2410,7 +2410,7 @@ class PythonChainMapMarshaller(PythonListMarshaller):
             self.get_type_string(data, type_string),
         )
 
-    def read(  # type: ignore[override]  # we allow return of ChainMap though not compatible with super().read() return type.
+    def read(  # type: ignore[override]  # return type is different from superclass return type
         self: "PythonChainMapMarshaller",
         f: "hdf5storage.utilities.LowLevelFile",
         dsetgrp: h5py.Dataset | h5py.Group,
