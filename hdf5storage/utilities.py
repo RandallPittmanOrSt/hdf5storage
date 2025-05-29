@@ -851,8 +851,8 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
     r"""Decode data to Numpy unicode string (``numpy.str_``).
 
     Decodes `data` to Numpy unicode string (UTF-32), which is
-    ``numpy.str_``, or an array of them. If it can't be decoded, it
-    is returned as is. Unsigned integers, Python string types (``str``,
+    ``numpy.str_``, or an array of them. If it can't be decoded, a
+    TypeError is raised. Unsigned integers, Python string types (``str``,
     ``bytes``), and ``numpy.bytes_`` are supported. If it is an array of
     ``numpy.bytes_``, an array of those all converted to
     ``numpy.str_`` is returned. ``bytes`` and ``numpy.bytes_`` are
