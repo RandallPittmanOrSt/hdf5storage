@@ -990,8 +990,8 @@ def convert_to_numpy_bytes(  # noqa: C901, PLR0911, PLR0912
 
     Decodes `data` to a Numpy UTF-8 encoded string, which is
     ``numpy.bytes_``, or an array of them in which case it will be ASCII
-    encoded instead. If it can't be decoded, it is returned as
-    is. Unsigned integers, Python string types (``str``, ``bytes``), and
+    encoded instead. If it can't be decoded, a TypeError is raised.
+    Unsigned integers, Python string types (``str``, ``bytes``), and
     ``numpy.str_`` (UTF-32) are supported.
 
     For an array of unsigned integers, it may be desirable to make an
