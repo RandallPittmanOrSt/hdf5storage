@@ -793,12 +793,11 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
             data_to_store = data_to_store.T
 
         # Bools need to be converted to uint8 if the option is given.
-        if data_to_store.dtype.name == "bool" and f.options.convert_bools_to_uint8:
-            data_to_store = (
-                np.array(data_to_store, dtype=np.uint8)
-                if isinstance(data_to_store, np.ndarray)
-                else np.uint8(data_to_store)
-            )
+        if f.options.convert_bools_to_uint8:
+            if isinstance(data_to_store, np.bool_):
+                data_to_store = np.uint8(data_to_store)
+            if is_ndarray_of_type(data_to_store, np.bool_):
+                data_to_store = np.array(data_to_store, dtype=np.uint8)
 
         # If data is empty, we instead need to store the shape of the
         # array if the appropriate option is set. The shape should be
