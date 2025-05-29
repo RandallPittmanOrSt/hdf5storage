@@ -1009,11 +1009,6 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # matlab struct or not. If yes, then the field names must be put
         # in the metadata.
 
-        # data must be a numpy array or scalar. This also narrows for static type checking.
-        if not isinstance(data, np.ndarray | np.generic):
-            msg = "data must be a NumPy array or scalar."
-            raise TypeError(msg)
-
         if attributes is None:
             attributes = {}
         # Write the underlying numpy type if we are storing python
