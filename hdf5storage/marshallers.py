@@ -1009,11 +1009,6 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # matlab struct or not. If yes, then the field names must be put
         # in the metadata.
 
-        # data must be a numpy array or scalar. This also narrows for static type checking.
-        if not isinstance(data, np.ndarray | np.generic):
-            msg = "data must be a NumPy array or scalar."
-            raise TypeError(msg)
-
         if attributes is None:
             attributes = {}
         # Write the underlying numpy type if we are storing python
@@ -1024,7 +1019,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # 'matrix', or 'chararray') need to be stored.
 
         if f.options.store_python_metadata:
-            attributes["Python.Shape"] = ("value", np.ndarray(data.shape, dtype=np.uint64))
+            attributes["Python.Shape"] = ("value", np.array(data.shape, dtype=np.uint64))
 
             # Now, in Python 3, the dtype names for bare bytes and
             # unicode strings start with 'bytes' and 'str' respectively,
