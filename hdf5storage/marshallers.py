@@ -854,8 +854,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         ):
             wrote_as_struct = True
             # Grab the list of fields and properly escape them.
-            assert data_to_store.dtype.names is not None  # noqa: S101  # it's a structured array
-            field_names = list(data_to_store.dtype.names)
+            field_names = list(data_to_store.dtype.names)  # type: ignore[arg-type]  # we know it's a struct array
             escaped_field_names = [escape_path(n) for n in field_names]
 
             # If the group doesn't exist, it needs to be created. If it
