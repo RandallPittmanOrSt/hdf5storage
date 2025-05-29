@@ -847,12 +847,12 @@ def convert_to_str(  # noqa: C901, PLR0911
 def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
     data: str | bytes | bytearray | np.unsignedinteger | np.bytes_ | np.str_ | np.ndarray,
     length: int | None = None,
-) -> np.ndarray | np.str_:
+) -> npt.NDArray[np.str_] | np.str_:
     r"""Decode data to Numpy unicode string (``numpy.str_``).
 
     Decodes `data` to Numpy unicode string (UTF-32), which is
-    ``numpy.str_``, or an array of them. If it can't be decoded, it
-    is returned as is. Unsigned integers, Python string types (``str``,
+    ``numpy.str_``, or an array of them. If it can't be decoded, a
+    TypeError is raised. Unsigned integers, Python string types (``str``,
     ``bytes``), and ``numpy.bytes_`` are supported. If it is an array of
     ``numpy.bytes_``, an array of those all converted to
     ``numpy.str_`` is returned. ``bytes`` and ``numpy.bytes_`` are
@@ -910,9 +910,7 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
     if isinstance(data, np.uint8 | np.uint16):  # pyright: ignore[reportArgumentType]
         # They are single UTF-8 or UTF-16 scalars, which can be
         # wrapped into an array and recursed.
-        strarr = convert_to_numpy_str(np.atleast_1d(data))
-        assert isinstance(strarr, np.ndarray)  # noqa: S101  # assert is for type-checkers
-        return strarr[0]
+        return convert_to_numpy_str(np.atleast_1d(data))[0]  # type: ignore[return-type]  # this will be a np.str_
     if isinstance(data, np.uint32):  # pyright: ignore[reportArgumentType]
         # It is just the uint32 version of the character, so it just
         # needs to be have the dtype essentially changed by having
@@ -925,10 +923,8 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
             # be done.
             return data
         if ndarray_has_type(data, np.bytes_):
-            # R. Pittman edit: Switched from `np.char.decode` to `np.char.encode`
-            # 2025-05-27. Not sure why we assume this is UTF-32, when we assume scalar
-            # bytes are UTF-8.
-            return np.char.decode(data, "UTF-32")
+            # Just decode the bytes as UTF-8
+            return np.char.decode(data, "UTF-8")
         if ndarray_has_type(data, np.uint8) or ndarray_has_type(data, np.uint16) or ndarray_has_type(data, np.uint32):
             # It is an ndarray of some uint type. How it is converted
             # depends on its shape. If its shape is just (), then it is
@@ -994,8 +990,8 @@ def convert_to_numpy_bytes(  # noqa: C901, PLR0911, PLR0912
 
     Decodes `data` to a Numpy UTF-8 encoded string, which is
     ``numpy.bytes_``, or an array of them in which case it will be ASCII
-    encoded instead. If it can't be decoded, it is returned as
-    is. Unsigned integers, Python string types (``str``, ``bytes``), and
+    encoded instead. If it can't be decoded, a TypeError is raised.
+    Unsigned integers, Python string types (``str``, ``bytes``), and
     ``numpy.str_`` (UTF-32) are supported.
 
     For an array of unsigned integers, it may be desirable to make an

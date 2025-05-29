@@ -794,7 +794,11 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
 
         # Bools need to be converted to uint8 if the option is given.
         if data_to_store.dtype.name == "bool" and f.options.convert_bools_to_uint8:
-            data_to_store = np.uint8(data_to_store)  # type: ignore[arg-type]
+            data_to_store = (
+                np.array(data_to_store, dtype=np.uint8)
+                if isinstance(data_to_store, np.ndarray)
+                else np.uint8(data_to_store)
+            )
 
         # If data is empty, we instead need to store the shape of the
         # array if the appropriate option is set. The shape should be
@@ -819,8 +823,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # write what each element points to and make an array of the
         # references to them.
         if data_to_store.dtype.name == "object":
-            assert isinstance(data_to_store, np.object_) or is_ndarray_of_type(data_to_store, np.object_)  # noqa: S101
-            data_to_store = f.write_object_array(data_to_store)
+            data_to_store = f.write_object_array(data_to_store)  # type: ignore[arg-type]  # we know it's an object arr
 
         # If it an ndarray with fields and we are writing such things as
         # a Group/struct or if its shape is zero (h5py can't write it
@@ -850,8 +853,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         ):
             wrote_as_struct = True
             # Grab the list of fields and properly escape them.
-            assert data_to_store.dtype.names is not None  # noqa: S101  # it's a structured array
-            field_names = list(data_to_store.dtype.names)
+            field_names = list(data_to_store.dtype.names)  # type: ignore[arg-type]  # we know it's a struct array
             escaped_field_names = [escape_path(n) for n in field_names]
 
             # If the group doesn't exist, it needs to be created. If it
@@ -1494,7 +1496,7 @@ class NumpyDtypeMarshaller(NumpyScalarArrayMarshaller):
         f: "hdf5storage.utilities.LowLevelFile",
         grp: h5py.Group,
         name: str,
-        data: np.dtype,  # type: ignore[override]  # LSP violation but we don't care.
+        data: np.dtype,  # type: ignore[override]  # data type is different from superclass method
         type_string: str | None,  # noqa: ARG002
     ) -> h5py.Dataset | h5py.Group | None:
         # Pass it to the parent version of this function to write
