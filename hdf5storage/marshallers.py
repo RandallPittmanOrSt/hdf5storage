@@ -1019,7 +1019,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # 'matrix', or 'chararray') need to be stored.
 
         if f.options.store_python_metadata:
-            attributes["Python.Shape"] = ("value", np.ndarray(data.shape, dtype=np.uint64))
+            attributes["Python.Shape"] = ("value", np.array(data.shape, dtype=np.uint64))
 
             # Now, in Python 3, the dtype names for bare bytes and
             # unicode strings start with 'bytes' and 'str' respectively,
