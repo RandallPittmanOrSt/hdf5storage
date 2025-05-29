@@ -1496,7 +1496,7 @@ class NumpyDtypeMarshaller(NumpyScalarArrayMarshaller):
         f: "hdf5storage.utilities.LowLevelFile",
         grp: h5py.Group,
         name: str,
-        data: np.dtype,  # type: ignore[override]  # LSP violation but we don't care.
+        data: np.dtype,  # type: ignore[override]  # data type is different from superclass method
         type_string: str | None,  # noqa: ARG002
     ) -> h5py.Dataset | h5py.Group | None:
         # Pass it to the parent version of this function to write
