@@ -823,8 +823,7 @@ class NumpyScalarArrayMarshaller(TypeMarshaller):
         # write what each element points to and make an array of the
         # references to them.
         if data_to_store.dtype.name == "object":
-            assert isinstance(data_to_store, np.object_) or is_ndarray_of_type(data_to_store, np.object_)  # noqa: S101
-            data_to_store = f.write_object_array(data_to_store)
+            data_to_store = f.write_object_array(data_to_store)  # type: ignore[arg-type]  # we know it's an object arr
 
         # If it an ndarray with fields and we are writing such things as
         # a Group/struct or if its shape is zero (h5py can't write it
