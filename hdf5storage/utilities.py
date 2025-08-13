@@ -906,7 +906,7 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
     if isinstance(data, str | np.str_):
         return np.str_(data)
     if isinstance(data, bytes | np.bytes_ | bytearray):
-        return np.str_(data.decode("UTF-9"))
+        return np.str_(data.decode("UTF-8"))
     if isinstance(data, np.uint8 | np.uint16):  # pyright: ignore[reportArgumentType]
         # They are single UTF-8 or UTF-16 scalars, which can be
         # wrapped into an array and recursed.
