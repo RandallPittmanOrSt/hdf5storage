@@ -50,7 +50,9 @@ def supported_marshaller_api_versions() -> tuple[str]:
     return ("1.0",)
 
 
-def find_thirdparty_marshaller_plugins() -> dict[str, dict[str, importlib.metadata.EntryPoint]]:
+def find_thirdparty_marshaller_plugins() -> dict[
+    str, dict[str, importlib.metadata.EntryPoint]
+]:
     """Find, but don't load, all third party marshaller plugins.
 
     Third party marshaller plugins declare the entry point
@@ -69,7 +71,7 @@ def find_thirdparty_marshaller_plugins() -> dict[str, dict[str, importlib.metada
         plugins. The keys are the Marshaller API versions (``str``) and
         the values are ``dict`` of the entry points, with the module
         names as the keys (``str``) and the values being the entry
-        points (``pkg_resources.EntryPoint``).
+        points (``importlib.metadata.EntryPoint``).
 
     See Also
     --------
@@ -79,5 +81,6 @@ def find_thirdparty_marshaller_plugins() -> dict[str, dict[str, importlib.metada
     entry_points = importlib.metadata.entry_points()
     all_plugins = tuple(entry_points.select(group="hdf5storage.marshallers.plugins"))
     return {
-        ver: {p.name: p for p in all_plugins if p.name == ver} for ver in supported_marshaller_api_versions()
+        ver: {p.module: p for p in all_plugins if p.name == ver}
+        for ver in supported_marshaller_api_versions()
     }

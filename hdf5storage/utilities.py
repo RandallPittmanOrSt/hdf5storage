@@ -172,7 +172,10 @@ class LowLevelFile:
         if not isinstance(f, h5py.File):
             msg = "f must be a h5py.File."
             raise TypeError(msg)
-        if options.__class__.__module__ != "hdf5storage" or options.__class__.__name__ != "Options":
+        if (
+            options.__class__.__module__ != "hdf5storage"
+            or options.__class__.__name__ != "Options"
+        ):
             msg = "options must be a hdf5storage.Options."
             raise TypeError(msg)
         self._f: h5py.File = f
@@ -449,7 +452,8 @@ class LowLevelFile:
                     or np.any(
                         self._canonical_empty[...] != np.array([0, 0], dtype=np.uint64),
                     )
-                    or convert_attribute_to_string(ce_attrs.get("MATLAB_class")) != "canonical empty"
+                    or convert_attribute_to_string(ce_attrs.get("MATLAB_class"))
+                    != "canonical empty"
                     or ce_attrs.get("MATLAB_empty") != 1
                 ):
                     del self._refs_group["a"]
@@ -607,7 +611,8 @@ class LowLevelFile:
                     or np.any(
                         self._canonical_empty[...] != np.array([0, 0], dtype=np.uint64),
                     )
-                    or convert_attribute_to_string(ce_attrs.get("MATLAB_class")) != "canonical empty"
+                    or convert_attribute_to_string(ce_attrs.get("MATLAB_class"))
+                    != "canonical empty"
                     or ce_attrs.get("MATLAB_empty") != 1
                 ):
                     del self._refs_group["a"]
@@ -906,7 +911,7 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
     if isinstance(data, str | np.str_):
         return np.str_(data)
     if isinstance(data, bytes | np.bytes_ | bytearray):
-        return np.str_(data.decode("UTF-9"))
+        return np.str_(data.decode("UTF-8"))
     if isinstance(data, np.uint8 | np.uint16):  # pyright: ignore[reportArgumentType]
         # They are single UTF-8 or UTF-16 scalars, which can be
         # wrapped into an array and recursed.
@@ -925,7 +930,11 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
         if ndarray_has_type(data, np.bytes_):
             # Just decode the bytes as UTF-8
             return np.char.decode(data, "UTF-8")
-        if ndarray_has_type(data, np.uint8) or ndarray_has_type(data, np.uint16) or ndarray_has_type(data, np.uint32):
+        if (
+            ndarray_has_type(data, np.uint8)
+            or ndarray_has_type(data, np.uint16)
+            or ndarray_has_type(data, np.uint32)
+        ):
             # It is an ndarray of some uint type. How it is converted
             # depends on its shape. If its shape is just (), then it is
             # just a scalar wrapped in an array, which can be converted
@@ -971,7 +980,9 @@ def convert_to_numpy_str(  # noqa: C901, PLR0911, PLR0912
                 else:
                     encoding = "UTF-32BE"
                     dt = "S" + str(4 * length_to_use)
-                swapbytes = data.dtype.byteorder == "<" or (sys.byteorder == "little" and data.dtype.byteorder == "=")
+                swapbytes = data.dtype.byteorder == "<" or (
+                    sys.byteorder == "little" and data.dtype.byteorder == "="
+                )
             # Copy is needed to prevent errors.
             if swapbytes:
                 return np.char.decode(data.copy().byteswap().view(dt), encoding)
@@ -1071,7 +1082,11 @@ def convert_to_numpy_bytes(  # noqa: C901, PLR0911, PLR0912
             for index, x in np.ndenumerate(data):
                 new_data[index] = np.bytes_(x.encode("UTF-8"))
             return new_data
-        if ndarray_has_type(data, np.uint8) or ndarray_has_type(data, np.uint16) or ndarray_has_type(data, np.uint32):
+        if (
+            ndarray_has_type(data, np.uint8)
+            or ndarray_has_type(data, np.uint16)
+            or ndarray_has_type(data, np.uint32)
+        ):
             # It is an ndarray of some uint type. How it is converted
             # depends on its shape. If its shape is just (), then it is
             # just a scalar wrapped in an array, which can be converted
